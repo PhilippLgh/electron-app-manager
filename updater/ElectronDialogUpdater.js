@@ -10,22 +10,24 @@ class ElectronUpdater extends Updater {
 
     // TODO remove listeners?
 
-    this.on('update-available', this.handleUpdateAvailable)
+    let updater = this
+    if(opts.shell === true) {
+      updater = autoUpdater
+    }
 
-    this.on('update-not-available', () => {
+    updater.on('update-available', this.handleUpdateAvailable)
+    updater.on('update-not-available', () => {
       dialog.showMessageBox({
         title: 'No Updates',
         message: 'Current version is up-to-date.'
       })
-      this.updater.enabled = true
-      this.updater = null
+      this.updateMenuBtn.enabled = true
+      this.updateMenuBtn = null
     })
-
-    this.on('error', (error) => {
+    updater.on('error', (error) => {
       dialog.showErrorBox('Error: ', error == null ? "unknown" : (error.stack || error).toString())
     })
-
-    this.on('update-downloaded', () => {
+    updater.on('update-downloaded', () => {
       dialog.showMessageBox({
         title: 'Install Updates',
         message: 'Updates downloaded, application will be quit for update...'
@@ -46,15 +48,15 @@ class ElectronUpdater extends Updater {
         this.downloadUpdate(update)
       }
       else {
-        this.updater.enabled = true
-        this.updater = null
+        this.updateMenuBtn.enabled = true
+        this.updateMenuBtn = null
       }
     })
   }
 
   checkForUpdates(menuItem, focusedWindow, event) {
-    this.updater = menuItem
-    this.updater.enabled = false
+    this.updateMenuBtn = menuItem
+    this.updateMenuBtn.enabled = false
     super.checkForUpdates()
   }
 
