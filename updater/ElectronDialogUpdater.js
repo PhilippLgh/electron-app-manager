@@ -1,5 +1,5 @@
 const Updater = require('./updater')
-const { autoUpdater } = require("electron-updater")
+const { autoUpdater, CancellationToken } = require("electron-updater")
 
 const { dialog } = require('electron')
 
@@ -47,7 +47,9 @@ class ElectronUpdater extends Updater {
       buttons: ['Sure', 'No']
     }, (buttonIndex) => {
       if (buttonIndex === 0) {
-        this.downloadUpdate(update)
+        const cancellationToken = new CancellationToken()
+        autoUpdater.downloadUpdate(cancellationToken);
+        //this.downloadUpdate(update)
       }
       else {
         this.updateMenuBtn.enabled = true
