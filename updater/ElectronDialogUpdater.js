@@ -26,6 +26,8 @@ class ElectronUpdater extends Updater {
     })
     updater.on('error', (error) => {
       dialog.showErrorBox('Error: ', error == null ? "unknown" : (error.stack || error).toString())
+      this.updateMenuBtn.enabled = true
+      this.updateMenuBtn = null
     })
     updater.on('update-downloaded', () => {
       dialog.showMessageBox({
