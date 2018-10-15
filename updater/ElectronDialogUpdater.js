@@ -3,7 +3,6 @@ const { autoUpdater } = require("electron-updater")
 
 const { dialog } = require('electron')
 
-
 class ElectronUpdater extends Updater {
   constructor(opts) {
     super(opts)
@@ -13,6 +12,7 @@ class ElectronUpdater extends Updater {
     let updater = this
     if(opts.shell === true) {
       updater = autoUpdater
+      this.isShell = true
     }
 
     updater.on('update-available', this.handleUpdateAvailable)
@@ -57,7 +57,11 @@ class ElectronUpdater extends Updater {
   checkForUpdates(menuItem, focusedWindow, event) {
     this.updateMenuBtn = menuItem
     this.updateMenuBtn.enabled = false
-    super.checkForUpdates()
+    if(this.isShell){
+      autoUpdater.checkForUpdates()
+    } else {
+      super.checkForUpdates()
+    }
   }
 
 }
