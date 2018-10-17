@@ -68,6 +68,9 @@ class AppUpdater extends EventEmitter {
   get downloadDir() {
     // TODO this can cause timing problems if app is not ready yet:
     let userDataPath = app.getPath('userData')
+    if (!fs.existsSync(userDataPath)) {
+      fs.mkdirSync(userDataPath)
+    }
     let downloadDir = path.join(userDataPath, 'releases')
     if (!fs.existsSync(downloadDir)) {
       fs.mkdirSync(downloadDir)
@@ -96,6 +99,11 @@ class AppUpdater extends EventEmitter {
 
     check()
     this.checkHandler = setInterval(check, interval)
+  }
+  async getCachedApp() {
+     //TODO the user might decide to rollback to an earlier version so the latest is not always correct
+    let latestCached = await this.cache.getLatest()
+    return latestCached
   }
   async checkForUpdates() {
     this.log.log('checking for updates at ', this.repo)

@@ -48,7 +48,7 @@ class ElectronUpdater extends Updater {
     }, (buttonIndex) => {
       if (buttonIndex === 0) {
         const cancellationToken = new CancellationToken()
-        autoUpdater.downloadUpdate(cancellationToken);
+        autoUpdater.downloadUpdate(cancellationToken)
         //this.downloadUpdate(update)
       }
       else {
