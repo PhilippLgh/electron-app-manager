@@ -37,6 +37,9 @@ class ElectronUpdater extends Updater {
         setImmediate(() => autoUpdater.quitAndInstall())
       })
     })
+
+    this.handleUpdateAvailable = this.handleUpdateAvailable.bind(this)
+    this.checkForUpdates = this.checkForUpdates.bind(this)
   }
 
   handleUpdateAvailable(update) {
@@ -47,9 +50,12 @@ class ElectronUpdater extends Updater {
       buttons: ['Sure', 'No']
     }, (buttonIndex) => {
       if (buttonIndex === 0) {
-        const cancellationToken = new CancellationToken()
-        autoUpdater.downloadUpdate(cancellationToken)
-        //this.downloadUpdate(update)
+        if(this.isShell){
+          const cancellationToken = new CancellationToken()
+          autoUpdater.downloadUpdate(cancellationToken)
+        }else {
+          this.downloadUpdate(update)
+        }
       }
       else {
         this.updateMenuBtn.enabled = true
