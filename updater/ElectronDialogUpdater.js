@@ -29,14 +29,28 @@ class ElectronUpdater extends Updater {
       this.updateMenuBtn.enabled = true
       this.updateMenuBtn = null
     })
-    updater.on('update-downloaded', () => {
-      dialog.showMessageBox({
-        title: 'Install Updates',
-        message: 'Updates downloaded, application will be quit for update...'
-      }, () => {
-        setImmediate(() => autoUpdater.quitAndInstall())
+
+    if(this.isShell) {
+      updater.on('update-downloaded', () => {
+        dialog.showMessageBox({
+          title: 'Install Updates',
+          message: 'Updates downloaded, application will be quit for update...'
+        }, () => {
+          setImmediate(() => autoUpdater.quitAndInstall())
+        })
       })
-    })
+    } else {
+      // needs to be handled in app
+      //TODO is different for UI and background script changes
+      updater.on('update-downloaded', () => {
+        dialog.showMessageBox({
+          title: 'Install Updates',
+          message: 'Updates downloaded, reload to see changes...'
+        }, () => {
+
+        })
+      })
+    }
 
     this.handleUpdateAvailable = this.handleUpdateAvailable.bind(this)
     this.checkForUpdates = this.checkForUpdates.bind(this)
