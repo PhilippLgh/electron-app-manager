@@ -1,6 +1,18 @@
-const AppUpdater = require('./updater/updater')
-
-const DialogUpdater = require('./updater/ElectronDialogUpdater')
+function isElectron() {
+  // Renderer process
+  if (typeof window !== 'undefined' && typeof window.process === 'object' && window.process.type === 'renderer') {
+    return true
+  }
+  // Main process
+  if (typeof process !== 'undefined' && typeof process.versions === 'object' && !!process.versions.electron) {
+    return true
+  }
+  // Detect the user agent when the `nodeIntegration` option is set to true
+  if (typeof navigator === 'object' && typeof navigator.userAgent === 'string' && navigator.userAgent.indexOf('Electron') >= 0) {
+    return true
+  }
+  return false
+}
 
 /**
  * it should be able to check for github releases
@@ -19,5 +31,7 @@ const DialogUpdater = require('./updater/ElectronDialogUpdater')
 // https://github.com/electron/update-electron-app/blob/master/index.js
 // https://github.com/ethereum/ethereum-client-binaries
 
-module.exports.AppUpdater = AppUpdater
-module.exports.DialogUpdater = DialogUpdater
+module.exports = {
+  AppUpdater: require('./updater/updater'),
+  DialogUpdater: isElectron() && require('./updater/ElectronDialogUpdater')
+}
