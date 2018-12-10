@@ -1,6 +1,11 @@
 # A fast and easy update solution for Electron apps
 
 
+# Installation
+```
+npm i @philipplgh/electron-app-updater
+```
+
 # Basic Usage 
 
 ## Configure the Updater
