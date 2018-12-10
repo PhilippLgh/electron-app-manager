@@ -1,7 +1,6 @@
 const GitHub = require('@octokit/rest')
 const Repo = require('./Repo')
 const semver = require('semver')
-const fso = require('original-fs') // || fs
 
 const {download, downloadJson} = require('../downloader')
 
@@ -49,7 +48,7 @@ class GithubRepo extends Repo {
         error: 'release does not contain any assets'
       }
     }
-    let app = releaseInfo.assets.find(release => release.name.endsWith('.asar'))
+    let app = releaseInfo.assets.find(release => release.name.endsWith('.asar') || release.name.endsWith('.zip'))
     if(!app){
       return {
         name: releaseInfo.tag_name,
@@ -57,14 +56,15 @@ class GithubRepo extends Repo {
       }
     }
 
-    const assetUrlAsar = app.browser_download_url
+    const assetUrlApp = app.browser_download_url
 
     return {
       name: releaseInfo.tag_name,
+      fileName: app.name,
       version,
       channel,
       tag: releaseInfo.tag_name,
-      downloadUrl: assetUrlAsar
+      downloadUrl: assetUrlApp
       // error: 'set when invalid'
     };
   }
@@ -142,10 +142,9 @@ class GithubRepo extends Repo {
     }
   }
   // axios has issues to follow gh redirects
-  async download(release, filePath, onProgress = () => {}) {
+  async download(release, onProgress = () => {}) {
     const { downloadUrl } = release;
-    const dest = fso.createWriteStream(filePath);
-    let downloadPath = await download(downloadUrl, dest, onProgress);
+    let downloadPath = await download(downloadUrl, onProgress);
     return downloadPath;
   }
 }

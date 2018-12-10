@@ -5,8 +5,16 @@ const crypto = require('crypto')
 const CacheRepo = require('./repositories/LocalCache')
 const GithubRepo = require('./repositories/Github')
 const semver = require('semver')
-
-const { app } = require('electron')
+let fso = fs
+let app = undefined
+try {
+  fso = require('original-fs')
+  app = require('electron').app
+  console.log('running in electron: use original-fs')
+} catch (error) {
+  console.log('running in node: use fs')
+}
+const AdmZip = require('adm-zip')
 
 function shasum(data, alg) {
   return crypto
@@ -39,8 +47,8 @@ class AppUpdater extends EventEmitter {
     const { repo } = options
 
     this.repo = repo
-
     this.cache = new CacheRepo(this.downloadDir)
+
     if (repo.startsWith('https://github.com/')) {
       this.remote = new GithubRepo(repo)
     }
@@ -67,7 +75,12 @@ class AppUpdater extends EventEmitter {
   }
   get downloadDir() {
     // TODO this can cause timing problems if app is not ready yet:
-    let userDataPath = app.getPath('userData')
+    let userDataPath = __dirname
+    try {
+      app.getPath('userData')
+    } catch (error) {
+      
+    }
     if (!fs.existsSync(userDataPath)) {
       fs.mkdirSync(userDataPath)
     }
@@ -88,7 +101,7 @@ class AppUpdater extends EventEmitter {
       if (latest && latest.version) {
         console.log('update found: downloading ', latest.version);
         try {
-          let download = await this.downloadUpdate(latest)
+          let download = await this.download(latest)
 
         } catch (error) {
           errorCounter++
@@ -157,11 +170,10 @@ class AppUpdater extends EventEmitter {
     return isValid;
     */
   }
-  async downloadUpdate(update) {
-
-    const downloadDir = this.downloadDir
-    const filename = `${update.name}.asar`
-    const dest = path.join(downloadDir, filename)
+  async getLatest() {
+    return this.remote.getLatest()
+  }
+  async download(update, cacheFile = false, downloadDir) {
 
     // console.log('download update ', update)
     // console.log('download update to', dest)
@@ -178,7 +190,25 @@ class AppUpdater extends EventEmitter {
 
     try {
 
-      let filePath = await this.remote.download(update, dest, onProgress)
+      const data = await this.remote.download(update, onProgress)
+
+      if(cacheFile) {
+        if(!downloadDir) {
+          downloadDir = this.downloadDir
+        }
+        let filePath = path.join(downloadDir, update.fileName)
+        fs.writeFileSync(filePath, data)
+      }
+
+      let parsedData = null
+      if (update.isAsar) {
+        // TODO
+      } else {
+        parsedData = new AdmZip(data)
+      }
+
+      /*
+      console.log('downloaded ', data)
       let release = Object.assign({}, update, {
         filePath
       })
@@ -197,12 +227,17 @@ class AppUpdater extends EventEmitter {
         // TODO delete here? - only necessary if data was written
         return;
       }
+      */
+
+      let release = Object.assign({}, update, {
+        data: parsedData
+      })
 
       this.emit('update-downloaded', release)
-      return release;
+      return release
 
     } catch (error) {
-      console.log('error during download:', error.message);
+      console.log('error during download:', error);
       return Object.assign(
         {
           error: error.message
