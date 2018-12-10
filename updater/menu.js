@@ -72,7 +72,7 @@ function createCheckUpdateMenuItem(){
               `
         },
         async () => {
-          let download = await updater.downloadUpdate(update);
+          let download = await updater.download(update);
           if (!download.error) {
             dialog.showMessageBox({
               title: 'Update downloaded',
@@ -116,7 +116,7 @@ function createVersionChooserSubMenu(){
           message: 'Switch to version ' + release.tag
         });
         */
-        let download = await updater.downloadUpdate(release);
+        let download = await updater.download(release);
         if (!download.error) {
           dialog.showMessageBox({
             title: 'Change Version',
