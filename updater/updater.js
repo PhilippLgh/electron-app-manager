@@ -1,6 +1,7 @@
 const { EventEmitter } = require('events')
 const path = require('path')
 const fs = require('fs')
+const url = require('url')
 const crypto = require('crypto')
 const CacheRepo = require('./repositories/LocalCache')
 const GithubRepo = require('./repositories/Github')
@@ -8,9 +9,13 @@ const AzureRepo = require('./repositories/Azure')
 const semver = require('semver')
 let fso = fs
 let app = undefined
+let showSplash = null
+let addZip 
 try {
   fso = require('original-fs')
   app = require('electron').app
+  showSplash = require('./ui/show-splash')
+  addZip = require('./electron-zip-support')
   console.log('running in electron: use original-fs')
 } catch (error) {
   console.log('running in node: use fs')
@@ -160,6 +165,43 @@ class AppUpdater extends EventEmitter {
   async getLatest() {
     return this.remote.getLatest()
   }
+
+  async hotLoad(indexHtml) {
+    if(showSplash == null){
+      throw new Error('Splash cannot be displayed - not running in Electron?')
+    }
+
+    // 1. show splash to indicate that updater is searching for app version
+    showSplash(this, indexHtml)
+
+    // 2. fetch latest release
+    const app = await this.getLatest()
+
+    // 3. download zip contents to memory
+    const result = await this.download(app)
+    
+    // 4. allow renderer to access files within zip in memory
+    /**
+     * TODO things to consider:
+     * this is *magic* and magic is usually not a good thing
+     * it will overwrite other interceptors - it seems there can only be one which might be a bug
+     * this will only allow to read from one zip which is probably intended
+     * it will also completely deactivate fs access for files outside the zip which is probably a good thing 
+     */
+    addZip(result.data)
+
+    let electronUrl = url.format({
+      slashes: true,
+      protocol: 'file:', // even though not 100% correct we are using file and not a custom protocol for the moment
+      pathname: '.zip/index.html', // path does only exist in memory
+    })
+        
+    result.electronUrl = electronUrl
+    
+    return result
+
+  }
+
   async download(update, cacheFile = false, downloadDir) {
 
     // console.log('download update ', update)
