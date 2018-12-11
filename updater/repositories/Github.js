@@ -64,13 +64,13 @@ class GithubRepo extends Repo {
       version,
       channel,
       tag: releaseInfo.tag_name,
-      downloadUrl: assetUrlApp
+      location: assetUrlApp
       // error: 'set when invalid'
     };
   }
   async getReleases() {
     // FIXME use pagination
-    let releaseInfo = await this.client.repos.getReleases({
+    let releaseInfo = await this.client.repos.listReleases({
       owner: this.baseOpts.owner,
       repo: this.baseOpts.repo
     });
@@ -141,11 +141,10 @@ class GithubRepo extends Repo {
       return null;
     }
   }
-  // axios has issues to follow gh redirects
   async download(release, onProgress = () => {}) {
-    const { downloadUrl } = release;
-    let downloadPath = await download(downloadUrl, onProgress);
-    return downloadPath;
+    const { location } = release;
+    let data = await download(location, onProgress);
+    return data;
   }
 }
 
