@@ -71,8 +71,9 @@ async function download(url, onDownloadProgress) {
 }
 
 async function downloadJson(url){
-  let response = await axios.get(url)
-  return response.data
+  let response = await download(url)
+  response = JSON.parse(response.toString())
+  return response
 }
 
 function downloadToFile(filePath){
