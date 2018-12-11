@@ -4,6 +4,7 @@ const fs = require('fs')
 const crypto = require('crypto')
 const CacheRepo = require('./repositories/LocalCache')
 const GithubRepo = require('./repositories/Github')
+const AzureRepo = require('./repositories/Azure')
 const semver = require('semver')
 let fso = fs
 let app = undefined
@@ -23,23 +24,6 @@ function shasum(data, alg) {
     .digest('hex');
 }
 
-/* release / package struct
-{
-  name: 'short name of package'
-  version: 'e.g. 1.0.1 not v1.0.1_alpha2_xyz'
-  tag: 'e.g. v1.0.1_alpha2_xyz'
-  channel: 'alpha | beta | release | ...'
-  filePath: 'the path to an asar file'
-  downloadUrl: 'if remote: the url to fetch asar'
-  error: 'set when invalid'
-
-  checksums:
-
-  dependencies: 'future'
-  notes: 'future'
-}
-*/
-
 class AppUpdater extends EventEmitter {
   constructor(options) {
     super()
@@ -51,6 +35,9 @@ class AppUpdater extends EventEmitter {
 
     if (repo.startsWith('https://github.com/')) {
       this.remote = new GithubRepo(repo)
+    }
+    if(repo.includes('blob.core.windows.net')){
+      this.remote = new AzureRepo(repo)
     }
 
     if (this.remote == null) {
@@ -192,11 +179,13 @@ class AppUpdater extends EventEmitter {
 
       const data = await this.remote.download(update, onProgress)
 
+      // write file to disk if caching is on. otherwise keep only in memory
+      let filePath = ""
       if(cacheFile) {
         if(!downloadDir) {
           downloadDir = this.downloadDir
         }
-        let filePath = path.join(downloadDir, update.fileName)
+        filePath = path.join(downloadDir, update.fileName)
         fs.writeFileSync(filePath, data)
       }
 
@@ -208,11 +197,6 @@ class AppUpdater extends EventEmitter {
       }
 
       /*
-      console.log('downloaded ', data)
-      let release = Object.assign({}, update, {
-        filePath
-      })
-
       // if release has no checksum metadata try to fetch
       // TODO remove this
       if (release.checksums === undefined) {
@@ -232,6 +216,8 @@ class AppUpdater extends EventEmitter {
       let release = Object.assign({}, update, {
         data: parsedData
       })
+
+      release.location = filePath || release.location
 
       this.emit('update-downloaded', release)
       return release
