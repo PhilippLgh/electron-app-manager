@@ -88,30 +88,11 @@ class GithubRepo extends Repo {
   async extendWithMetadata(release) {
     let meta = await this.getMetadata(release);
     if (!meta) {
-      return Object.assign(
-        {
-          error: 'no meta data'
-        },
-        release
-      );
-      /*
       return {
         ...release,
         error: 'no meta data'
       }
-      */
     }
-    return Object.assign(
-      {
-        checksums: {
-          sha1: meta.sha1,
-          sha256: meta.sha256,
-          sha512: meta.sha512
-        }
-      },
-      release
-    );
-    /*
     return {
       ...release,
       checksums: {
@@ -120,7 +101,6 @@ class GithubRepo extends Repo {
         sha512: meta.sha512
       }
     }
-    */
   }
   async getLatest() {
     // the latest uploaded (/latest api route) is not necessarily the latest version
