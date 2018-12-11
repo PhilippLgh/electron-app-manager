@@ -29,13 +29,13 @@ class CacheRepo extends Repo {
         return {
           name: m.name,
           version: `${m.version}${m.channel ? ('-' + m.channel) : ''}`,
-          filePath: f
+          location: f
         };
       } catch (error) {
         console.warn('Cache contains invalid package: ', f, error)
         process.exit()
         return {
-          filePath: f,
+          location: f,
           error: 'invalid package'
         };
       }

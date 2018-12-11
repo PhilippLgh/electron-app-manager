@@ -12,7 +12,7 @@ function createUiChooserSubMenu(){
           if (cached === null) {
             throw new Error('No package in cache found: press "check update"');
           }
-          let asarPath = cached.filePath;
+          let asarPath = cached.location;
           //FIXME start(asarPath, cached.version);
         } catch (error) {
           dialog.showMessageBox({
@@ -78,7 +78,7 @@ function createCheckUpdateMenuItem(){
               title: 'Update downloaded',
               message: `Press OK to reload for update to version ${download.version}`
             });
-            let asarPath = download.filePath;
+            let asarPath = download.location;
             updater.emit('user-update-request', asarPath)
           } else {
             dialog.showMessageBox({
@@ -122,7 +122,7 @@ function createVersionChooserSubMenu(){
             title: 'Change Version',
             message: 'Switch to version ' + release.tag
           });
-          let asarPath = download.filePath;
+          let asarPath = download.location;
           // start(asarPath, download.version);
         }
       }
