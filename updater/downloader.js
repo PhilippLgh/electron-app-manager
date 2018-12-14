@@ -1,36 +1,45 @@
 const http = require('http')
 const https = require('https')
-const stream = require('stream')
+const url = require("url")
+const WritableMemoryStream = require('./WritableMemoryStream')
 
-function downloadRaw(url, w, progress = () => {}) {
+function request(method, _url, opts) {
+  const parsedURL = url.parse(_url);
+  let protocolHandler = parsedURL.protocol === "https:" ? https : http;
+
+  const options = {
+    protocol: parsedURL.protocol,
+    hostname: parsedURL.hostname,
+    method,
+    path: parsedURL.path,
+    ...opts
+  };
+
   return new Promise((resolve, reject) => {
-    let protocol = /^https:/.exec(url) ? https : http;
-    progress(0);
+    let req = protocolHandler.request(options, res => {
+      resolve(res);
+    });
+    req.on("error", e => {
+      reject(e);
+    });
+    req.end();
+  });
+}
 
-    const _download = (res) => {
-      const total = parseInt(res.headers['content-length'], 0);
-      let completed = 0;
-      res.pipe(w);
-      res.on('data', data => {
-        completed += data.length;
-        progress(completed / total);
-      });
-      res.on('progress', progress);
-      res.on('error', reject);
-      res.on('end', () => resolve(w.path));
-    }
-
-    protocol
-      .get(url, res1 => {
-        // if redirect -> follow
-        if(res1.headers.location){
-          protocol = /^https:/.exec(res1.headers.location) ? https : http;
-          protocol.get(res1.headers.location, res2 => _download(res2)).on('error', reject);
-        }else{
-          _download(res1)
-        }
-      })
-      .on('error', reject);
+async function downloadStreamToBuffer(response, progress = () => {}){
+  return new Promise((resolve, reject) => {
+    let headers = response.headers;
+    const total = parseInt(headers["content-length"], 0);
+    let completed = 0;
+    let writable = new WritableMemoryStream()
+    response.pipe(writable)
+    response.on("data", data => {
+      completed += data.length;
+      progress(completed / total);
+    });
+    //response.on("progress", progress);
+    response.on("error", reject);
+    response.on("end", () => resolve(writable.buffer));
   });
 }
 
@@ -48,26 +57,16 @@ async function downloadBinAxios(url) {
 }
 */
 
-class WMStrm extends stream.Writable {
-  constructor(){
-    super()
-    this.buffer
+async function download(url, progress = () => {}){
+  // test for and follow redirect (GitHub)
+  let result = await request("HEAD", url);
+  let headers = result.headers;
+  if (headers.status === "302 Found" && headers.location) {
+    url = headers.location
   }
-  _write (chunk, enc, cb) {
-    var buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk, enc);
-    if(this.buffer === undefined) {
-      this.buffer = buffer
-    } else {
-      this.buffer = Buffer.concat([this.buffer, buffer]);
-    }
-    cb()
-  }
-}
-
-async function download(url, onDownloadProgress) {
-  const memoryBuffer = new WMStrm()
-  await downloadRaw(url, memoryBuffer, onDownloadProgress)
-  return memoryBuffer.buffer
+  let response = await request('GET', url)
+  let buf = await downloadStreamToBuffer(response, progress)
+  return buf
 }
 
 async function downloadJson(url){
@@ -81,5 +80,6 @@ function downloadToFile(filePath){
   // downloadRaw(url, dest) 
 }
 
+module.exports.request = request
 module.exports.download = download
 module.exports.downloadJson = downloadJson
