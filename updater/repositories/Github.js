@@ -52,17 +52,20 @@ class GithubRepo extends Repo {
     if(!app){
       return {
         name: releaseInfo.tag_name,
-        error: 'release does not contain an app package (.asar)'
+        error: 'release does not contain an app package (.asar or .zip)'
       }
     }
 
     const assetUrlApp = app.browser_download_url
+    const size = app.size
+    const downloads = app.download_count
 
     return {
       name: releaseInfo.tag_name,
       fileName: app.name,
       version,
       channel,
+      size,
       tag: releaseInfo.tag_name,
       location: assetUrlApp
       // error: 'set when invalid'

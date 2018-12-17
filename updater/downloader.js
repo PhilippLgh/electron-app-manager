@@ -82,4 +82,5 @@ function downloadToFile(filePath){
 
 module.exports.request = request
 module.exports.download = download
+module.exports.downloadResponse = downloadStreamToBuffer
 module.exports.downloadJson = downloadJson
