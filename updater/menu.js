@@ -1,6 +1,5 @@
-import { dialog, Menu, MenuItem, shell } from 'electron';
-import updater from './updater'
-
+const { dialog, Menu, MenuItem, shell } = require('electron')
+/*
 function createUiChooserSubMenu(){
   const UiChooserSubMenu = new Menu();  
   UiChooserSubMenu.append(
@@ -44,63 +43,33 @@ function createUiChooserSubMenu(){
   );
   return UiChooserSubMenu
 }
+*/
 
-function createCheckUpdateMenuItem(){
+function createCheckUpdateMenuItem(updater){
   return new MenuItem({
     label: 'Check Update',
     click: async () => {
       let update = null
       try {
-        update = await updater.checkUpdate();
+        update = await updater.checkForUpdates();
       } catch (error) {
         console.log('error during update check', error)        
         return
       }
-      if (!update) {
-        dialog.showMessageBox({
-          title: 'No update',
-          message: 'You are using the latest version'
-        });
-        return;
-      }
-      dialog.showMessageBox(
-        {
-          title: 'Checking for updates',
-          message: `
-              React UI update found: v${update.version} 
-              Press "OK" to download in background
-              `
-        },
-        async () => {
-          let download = await updater.download(update);
-          if (!download.error) {
-            dialog.showMessageBox({
-              title: 'Update downloaded',
-              message: `Press OK to reload for update to version ${download.version}`
-            });
-            let asarPath = download.location;
-            updater.emit('user-update-request', asarPath)
-          } else {
-            dialog.showMessageBox({
-              title: 'Download failed',
-              message: `Error ${download.error}`
-            });
-          }
-        }
-      );
     }
   })
 }
 
-function createOpenCacheMenuItem(){
+function createOpenCacheMenuItem(updater){
   return new MenuItem({
     label: 'Open Cache',
     click: async () => {
-      shell.showItemInFolder(updater.releaseDataPath);
+      shell.showItemInFolder(updater.downloadDir);
     }
   })
 }
 
+/*
 function createVersionChooserSubMenu(){
 
   let VersionChooserSubMenu = new Menu();
@@ -115,7 +84,7 @@ function createVersionChooserSubMenu(){
           title: 'Change Version',
           message: 'Switch to version ' + release.tag
         });
-        */
+        /
         let download = await updater.download(release);
         if (!download.error) {
           dialog.showMessageBox({
@@ -160,8 +129,9 @@ function createVersionChooserSubMenu(){
 
   return VersionChooserSubMenu
 }
+*/
 
-export default function createMenu(){
+function createMenu(updater){
   let mainMenu = new Menu();
   /*
   mainMenu.append(new MenuItem({
@@ -169,7 +139,19 @@ export default function createMenu(){
     submenu: createVersionChooserSubMenu()
   }))
   */
-  mainMenu.append(createCheckUpdateMenuItem())
-  mainMenu.append(createOpenCacheMenuItem())
+  mainMenu.append(createCheckUpdateMenuItem(updater))
+  mainMenu.append(createOpenCacheMenuItem(updater))
+
+  mainMenu.append(new MenuItem({label: 'Hot Load', click: () => { console.log('hot load mist app') } }))
+
+  let versionMenuItem = new MenuItem({
+    label: 'Version: v1.0.1',
+    enabled: false
+  })
+
+  mainMenu.append(versionMenuItem)
+
   return mainMenu
 }
+
+module.exports = createMenu
