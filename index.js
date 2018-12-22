@@ -15,6 +15,7 @@ function isElectron() {
 }
 
 module.exports = {
+  createMenu: require('./updater/menu'),
   AppUpdater: require('./updater/updater'),
   DialogUpdater: isElectron() && require('./updater/ElectronDialogUpdater')
 }
