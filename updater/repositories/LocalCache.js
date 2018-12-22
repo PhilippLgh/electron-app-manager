@@ -8,6 +8,7 @@ class CacheRepo extends Repo {
   constructor(downloadDir) {
     super();
     this.downloadDir = downloadDir
+    // TODO make sure dir exists?
   }
   async getReleases() {
     if (!fs.existsSync(this.downloadDir)) {
@@ -21,27 +22,34 @@ class CacheRepo extends Repo {
     }
     let filePathsFull = files.map(f => path.join(this.downloadDir, f));
     // expand file paths to valid release / package structs
-    let metadata = filePathsFull.map(f => {
-      try {
-        let m = JSON.parse(fs.readFileSync(path.join(f, 'metadata.json')));
-        // TODO validate
-        // TODO verify integratiy and authenticity
-        return {
-          name: m.name,
-          version: `${m.version}${m.channel ? ('-' + m.channel) : ''}`,
-          location: f
-        };
-      } catch (error) {
-        console.warn('Cache contains invalid package: ', f, error)
-        process.exit()
-        return {
-          location: f,
-          error: 'invalid package'
-        };
-      }
-    });
+    // let metadata = filePathsFull.map(f => this.parseMetadataFromJson);
+    console.log('search for metadata in files', filePathsFull)
+    let metadata = []
 
     return metadata;
+  }
+  parseMetadataFromFileName() {
+
+  }
+  parseMetadataFromZip(){
+
+  }
+  parseMetadataFromJson() {
+    try {      
+      let m = JSON.parse(fs.readFileSync(path.join(f, 'metadata.json')));
+      // TODO validate
+      // TODO verify integratiy and authenticity
+      return {
+        name: m.name,
+        version: `${m.version}${m.channel ? ('-' + m.channel) : ''}`,
+        location: f
+      }
+    } catch (error) {
+      return {
+        location: f,
+        error: 'invalid package'
+      }
+    }
   }
   async getLatest() {
     let releases = await this.getReleases();
