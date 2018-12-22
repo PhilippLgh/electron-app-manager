@@ -57,12 +57,16 @@ async function downloadBinAxios(url) {
 }
 */
 
-async function download(url, progress = () => {}){
+async function download(url, progress = () => {}, redirectCount = 0){
+  if(redirectCount > 5) {
+    throw new Error('too many redirects: ' + redirectCount)
+  }
   // test for and follow redirect (GitHub)
   let result = await request("HEAD", url);
   let headers = result.headers;
-  if (headers.status === "302 Found" && headers.location) {
+  if ((headers.status === "302 Found" || headers.status === '301 Moved Permanently') && headers.location) {
     url = headers.location
+    return download(url, progress, redirectCount++)
   }
   let response = await request('GET', url)
   let buf = await downloadStreamToBuffer(response, progress)
