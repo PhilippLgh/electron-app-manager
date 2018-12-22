@@ -18,8 +18,9 @@ try {
   addZip = require('./electron-zip-support')
   console.log('running in electron: use original-fs')
 } catch (error) {
-  console.log('running in node: use fs')
+  console.log('running in node: use fs', error)
 }
+const { request } = require("./downloader");
 const AdmZip = require('adm-zip')
 
 function shasum(data, alg) {
@@ -33,9 +34,11 @@ class AppUpdater extends EventEmitter {
   constructor(options) {
     super()
 
-    const { repo } = options
+    const { repo, downloadDir } = options
 
+    this.userDownloadDir = downloadDir
     this.repo = repo
+
     this.cache = new CacheRepo(this.downloadDir)
 
     if (repo.startsWith('https://github.com/')) {
@@ -55,6 +58,8 @@ class AppUpdater extends EventEmitter {
 
     this.checkForUpdates = this.checkForUpdates.bind(this)
 
+    this._latest = null
+
     if (options.auto === true) {
       if (options.interval <= 5 || options.interval > (24 * 60)) {
         throw new Error(`Interval ${options.interval} (min) is unreasonable or not within rate limits`)
@@ -66,10 +71,13 @@ class AppUpdater extends EventEmitter {
     }
   }
   get downloadDir() {
+    if(this.userDownloadDir){
+      return this.userDownloadDir
+    }
     // TODO this can cause timing problems if app is not ready yet:
     let userDataPath = __dirname
     try {
-      app.getPath('userData')
+      userDataPath = app.getPath('userData')
     } catch (error) {
       
     }
@@ -113,30 +121,33 @@ class AppUpdater extends EventEmitter {
   async checkForUpdates() {
     this.log.log('checking for updates at ', this.repo)
 
-    // first check the cache
-    let latestCached
-    try {
-      latestCached = await this.cache.getLatest()
-    } catch (error) {
-      console.error(error)
-      return null
-    }
-    this.log.log('latest version in cache is: ', latestCached ? latestCached.version : 'nothing cached')
+    const latest = await this.getLatest('all')
+    let latestCached = latest.cache
+    let latestBackend = latest.remote
+    let latestMemory = this._latest
+
+    console.log('compare: ', latestCached, latestBackend, latestMemory)
 
     // check remote for an updated version
-    let latestBackend = await this.remote.getLatest()
-    if (
-      latestBackend &&
-      (!latestCached || semver.gt(latestBackend.version, latestCached.version))
-    ) {
-      this.emit('update-available', latestBackend)
+    if(latestBackend) {
+
+      let hasCacheLatestVersion = latestCached && !semver.gt(latestBackend.version, latestCached.version)
+      let hasMemoryLatestVersion = latestMemory && !semver.gt(latestBackend.version, latestMemory.version)
+
+      if(hasCacheLatestVersion || hasMemoryLatestVersion) {
+        this.log.log('cache or memory has latest version', hasCacheLatestVersion ? latestCached : latestMemory)
+        this.emit('update-not-available', hasCacheLatestVersion ? latestCached : latestMemory)
+        return null // signals no update
+      } else {
+        this.log.log('update available: ', latestBackend.version)
+        this.emit('update-available', latestBackend)
+        return latestBackend
+      }
     } else {
+      this.log.log('no latest backend version available - update-not-available')
       this.emit('update-not-available', latestCached)
-      this.log.log('cache has latest')
+      return null // signals no update
     }
-
-    return latestBackend
-
   }
   async checkIntegrity() {
     return true
@@ -162,10 +173,33 @@ class AppUpdater extends EventEmitter {
     return isValid;
     */
   }
-  async getLatest() {
-    return this.remote.getLatest()
-  }
+  async _getLatest() {
 
+    let latestCached = await this.cache.getLatest()
+    let latestRemote = await this.remote.getLatest()
+    let latestMemory = this._latest
+
+    let hasCacheLatestVersion = latestCached && !semver.gt(latestRemote.version, latestCached.version)
+    let hasMemoryLatestVersion = latestMemory && !semver.gt(latestRemote.version, latestMemory.version)
+
+    let latestTotal = hasCacheLatestVersion ? 'cache' : (hasMemoryLatestVersion ? 'memory' : 'remote')
+
+    return  {
+      latest: latestTotal,
+      cache: latestCached,
+      memory: latestMemory,
+      remote: latestRemote
+    }
+  }
+  async getLatest(source) {
+    if(!source){
+      return this.remote.getLatest()
+    } else if(source === 'all') {
+      return this._getLatest()
+    } else {
+      return this.remote.getLatest()
+    }
+  }
   async hotLoad(indexHtml) {
     if(showSplash == null){
       throw new Error('Splash cannot be displayed - not running in Electron?')
@@ -176,6 +210,7 @@ class AppUpdater extends EventEmitter {
 
     // 2. fetch latest release
     const app = await this.getLatest()
+    this._latest = app // cache result
 
     // 3. download zip contents to memory
     const result = await this.download(app)
@@ -188,7 +223,19 @@ class AppUpdater extends EventEmitter {
      * this will only allow to read from one zip which is probably intended
      * it will also completely deactivate fs access for files outside the zip which is probably a good thing 
      */
-    addZip(result.data)
+    addZip(result.packagedApp)
+    /*
+    let result = {}
+    const { location } = app;
+    let _result = await request("HEAD", location);
+    let headers = _result.headers;
+    let zipUrl = location
+    if (headers.status === "302 Found" && headers.location) {
+      zipUrl = headers.location
+    }
+    let remoteZip = new RemoteZip(zipUrl)
+    addZip(remoteZip)
+    */
 
     let electronUrl = url.format({
       slashes: true,
@@ -201,7 +248,6 @@ class AppUpdater extends EventEmitter {
     return result
 
   }
-
   async download(update, cacheFile = false, downloadDir) {
 
     // console.log('download update ', update)
@@ -256,7 +302,8 @@ class AppUpdater extends EventEmitter {
       */
 
       let release = Object.assign({}, update, {
-        data: parsedData
+        data: parsedData,
+        packagedApp: parsedData
       })
 
       release.location = filePath || release.location
@@ -266,12 +313,10 @@ class AppUpdater extends EventEmitter {
 
     } catch (error) {
       console.log('error during download:', error);
-      return Object.assign(
-        {
+      return Object.assign({
           error: error.message
         },
-        update
-      )
+        update)
     }
   }
 }
