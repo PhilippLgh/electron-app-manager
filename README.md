@@ -1,4 +1,4 @@
-<h1 align="center">Electron App Updater</h1>
+<h1 align="center">Electron App Manager</h1>
 
 <p align="center">
   <a href="https://circleci.com/gh/PhilippLgh/electron-app-updater"><img src="https://img.shields.io/circleci/project/github/PhilippLgh/electron-app-updater/master.svg" alt="Build Status"></a>
@@ -9,7 +9,7 @@
 <h4 align="center" style="color: red">WARNING: WIP / NOT PRODUCTION READY</h4>
 
 <h4>
-Electron App Updater provides fast, secure, minimal and continuous updates.
+Electron App Manager provides fast, secure, minimal and continuous updates + version and dependency management.
 </h4>
 
 # Features
@@ -27,15 +27,15 @@ Electron App Updater provides fast, secure, minimal and continuous updates.
 
 # Difference to Squirrel & Electron-Builder
 
-*Electron App Updater* uses `Electron-Builder's` updater under the hood for full binary updates.
+*Electron App Manager* uses `Electron-Builder's` updater under the hood for full binary updates.
 However, opposed to Squirrel and Electron-Builder not every update downloads a full installer, needs elevated permissions or the user's permission.
-One important concept is that *Electron App Updater* updates the Electron binaries and the application code separately [learn why]().
+One important concept is that *Electron App Manager* updates the Electron binaries and the application code separately [learn why]().
 
 # Installation
 ```bash
-npm i @philipplgh/electron-app-updater
+npm i @philipplgh/electron-app-manager
 or
-yarn add @philipplgh/electron-app-updater
+yarn add @philipplgh/electron-app-manager
 ```
 
 # Basic Usage
@@ -43,7 +43,7 @@ yarn add @philipplgh/electron-app-updater
 ## App Updater
 
 #### Automatic Update Checking
-The default for Electron App Updater is to check every **20 minutes** for new updates at the given location and update automatically.
+The default for Electron App Manager is to check every **20 minutes** for new updates at the given location and update automatically.
 
 ```javascript
 // import { AppUpdater } from '@philipplgh/electron-app-updater'
@@ -194,7 +194,7 @@ Please note that metadata is prefixed with `__` which makes co-location and [par
 ### Wrapped Binary Package with implicit Metadata
 
 <pre>
-    MyApp-v1.0.0-stable.zip
+    MyApp-<b>v1.0.0-stable</b>.zip
 (a) ├── MyApp.exe
 </pre>
 
@@ -238,7 +238,7 @@ interface IMetadata {
 }
 ```
 
-### Hosted
+### Hosted / Managed
 Hosted metadata is stored somewhere in a database and made accessible through an API.
 TODO
 
@@ -248,7 +248,7 @@ TODO
 
 # Repositories (Backends)
 
-Electron App Updater supports multiple options to host and distribute binaries and app packages.
+Electron App Manager supports multiple options to host and distribute binaries and app packages.
 All repositories implement the IRepository interface and support the following methods.
 
 ```javascript
@@ -282,7 +282,7 @@ IRelease {
 
 ## *Hot Loading* (Experimental)
 
-Hot loading will download all Web app contents into memory and serve them from a virtual fs. While the package content is being downloaded *Electron App Updater* will display a generated splashcreen with a progress animation.
+Hot loading will download all Web app contents into memory and serve them from a virtual fs. While the package content is being downloaded *Electron App Manager* will display a generated splashcreen with a progress animation.
 
 ```javascript
 let result = await appUpdater.hotLoad()
