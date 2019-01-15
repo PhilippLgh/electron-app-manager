@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "mocha --require ts-node/register test/**/*.ts",
+    "build": "tsc -p ./tsconfig.json"
   },
   "author": "",
   "license": "ISC",
@@ -14,5 +15,17 @@
     "electron-updater": "2.23.2",
     "semver": "^5.6.0",
     "xml2js": "^0.4.19"
+  },
+  "devDependencies": {
+    "@types/chai": "^4.1.7",
+    "@types/mocha": "^5.2.5",
+    "@types/nock": "^9.3.0",
+    "@types/node": "^10.12.18",
+    "@types/semver": "^5.5.0",
+    "chai": "^4.2.0",
+    "mocha": "^5.2.0",
+    "nock": "^10.0.6",
+    "ts-node": "^7.0.1",
+    "typescript": "^3.2.2"
   }
 }
