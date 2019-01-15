@@ -3,7 +3,7 @@ import GithubRepo from '../updater/repositories/Github'
 import { assert } from 'chai'
 import nock from 'nock'
 import semver from 'semver'
-import { IRelease } from '../updater/api/IRelease';
+import { IRelease, IReleaseExtended } from '../updater/api/IRelease';
 
 describe('Github', () => {
 
@@ -60,14 +60,41 @@ describe('Github', () => {
   })
 
   describe('getLatest()', () => {
-    it('returns only the latest release from Github API', async () => {
+
+    it('returns only the latest ReleaseInfo from Github API', async () => {
       let release = await githubRepo.getLatest() as IRelease
       assert.equal('0.1.19-alpha', release.version)
     });
+
+    it('should return ReleaseInfoExtended if detached metadata.json present in assets', async () => {
+      let release = await githubRepo.getLatest() as IReleaseExtended
+      const sha512 = '047bb4e33fb42e953db1978eb1b320fb4615d6dacb9ae0369179c15eb3ed37fe5b6a0030c35abf1738ffac9e0417e63771c189f2ac690cc3f5259daa222b4390'
+      assert.equal(sha512, release.checksums.sha512)
+    });
+
   })
 
-  describe('download()', () => {
+  describe('getVersion(version : string)', () => {
+    it.skip('returns the ReleaseInfo for the specified version', async () => {
 
+    });
+  })
+
+  describe('getMetadata(IReleaseInfo release)', () => {
+    it('returns the (detached | included | hosted) IMetadata for a given IReleaseInfo', async () => {
+      let releases = await githubRepo.getReleases()
+      let latest = releases[0] as IRelease
+      let meta = await githubRepo.getMetadata(latest)
+      if(meta === null) throw new Error('metadata is null')
+      const sha512 = '047bb4e33fb42e953db1978eb1b320fb4615d6dacb9ae0369179c15eb3ed37fe5b6a0030c35abf1738ffac9e0417e63771c189f2ac690cc3f5259daa222b4390'
+      assert.equal(sha512, meta.sha512)
+    });
+  })
+
+  describe('download(IReleaseInfo release)', () => {
+    it.skip('downloads the package for a given ReleaseInfo', async () => {
+
+    });
   })
 
 })

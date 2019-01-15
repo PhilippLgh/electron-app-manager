@@ -1,4 +1,4 @@
-import { IRelease, IInvalidRelease, IMetadata } from '../api/IRelease'
+import { IRelease, IInvalidRelease, IMetadata, IReleaseExtended } from '../api/IRelease'
 import { IRemoteRepository } from '../api/IRepository'
 const { download, downloadJson } = require('../downloader')
 import semver from 'semver'
@@ -79,19 +79,23 @@ class Github implements IRemoteRepository {
     }
   }
 
-  private async getMetadata(release : IRelease) : Promise<IMetadata | null> {
+  async getMetadata(release : IRelease) : Promise<IMetadata | null> {
     try {
-      let meta = await downloadJson(`https://github.com/${this.owner}/${this.repo}/releases/download/${release.tag}/metadata.json`)
+      const meta = await downloadJson(`https://github.com/${this.owner}/${this.repo}/releases/download/${release.tag}/metadata.json`)
+      const {md5, sha1, sha256, sha512} = meta
       return {
-
-      };
+        md5,
+        sha1,
+        sha256,
+        sha512
+      }
     } catch (error) {
       console.log('metadata download failed', error.message);
       return null;
     }
   }
 
-  private async extendWithMetadata(release : IRelease) : Promise<IRelease | IInvalidRelease>{
+  private async extendWithMetadata(release : IRelease) : Promise<IRelease | IReleaseExtended | IInvalidRelease>{
     let meta = await this.getMetadata(release);
     if (!meta) {
       return {
@@ -100,14 +104,16 @@ class Github implements IRemoteRepository {
       }
     }
     // return *full release* info
+    const {md5, sha1, sha256, sha512} = meta
     return {
       ...release,
-      /*
       checksums: {
-        sha1: meta.sha1,
-        sha256: meta.sha256,
-        sha512: meta.sha512
+        md5,
+        sha1,
+        sha256,
+        sha512
       },
+      /*
       "signature": "TODO",
       "dependencies": "TODO",
       "permissions": "TODO",
