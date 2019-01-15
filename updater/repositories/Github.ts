@@ -134,6 +134,13 @@ class Github implements IRemoteRepository {
 
     // convert to proper format
     let releases = releaseInfo.data.map(this.toRelease.bind(this))
+
+    releases = releases.sort((a : IRelease | IInvalidRelease, b : IRelease | IInvalidRelease) => {
+      if(!('version' in a)) return 1
+      if(!('version' in b)) return -1
+      return semver.compare(b.version, a.version)
+    })
+
     return releases;
   }
 
@@ -144,7 +151,6 @@ class Github implements IRemoteRepository {
     if (releases.length <= 0) {
       return null;
     }
-    // FIXME sort releases based on semver
     let temp = releases[0];
     if(temp.error !== undefined){
       return null;
