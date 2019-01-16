@@ -1,10 +1,11 @@
 import { IRelease, IInvalidRelease, IMetadata, IReleaseExtended } from '../api/IRelease'
 import { IRemoteRepository } from '../api/IRepository'
-const { download, downloadJson } = require('../downloader')
+import RepoBase from '../api/RepoBase'
+const { download, downloadJson } = require('../lib/downloader')
 import semver from 'semver'
 import GitHub, { ReposListReleasesResponseItem } from '@octokit/rest'
 
-class Github implements IRemoteRepository {
+class Github extends RepoBase implements IRemoteRepository {
   
   private client: GitHub;
   private repoUrl: string;
@@ -12,7 +13,7 @@ class Github implements IRemoteRepository {
   private repo: string;
 
   constructor(repoUrl : string){
-
+    super()
     // WARNING: For unauthenticated requests, the rate limit allows for up to 60 requests per hour.
     this.client = new GitHub();
 
@@ -21,11 +22,6 @@ class Github implements IRemoteRepository {
     let l = parts.length 
     this.owner = parts[l-2]
     this.repo = parts[l-1].replace('.git', '')
-  }
-
-  private normalizeTag(tag : string){
-    if (tag[0] == 'v') tag = tag.slice(1);
-    return tag;
   }
 
   private toRelease(releaseInfo : ReposListReleasesResponseItem) : (IRelease | IInvalidRelease) {
@@ -113,12 +109,6 @@ class Github implements IRemoteRepository {
         sha256,
         sha512
       },
-      /*
-      "signature": "TODO",
-      "dependencies": "TODO",
-      "permissions": "TODO",
-      "notes": "TODO"
-      */
     }
   }
 
@@ -141,13 +131,7 @@ class Github implements IRemoteRepository {
     // convert to proper format
     let releases = releaseInfo.data.map(this.toRelease.bind(this))
 
-    releases = releases.sort((a : IRelease | IInvalidRelease, b : IRelease | IInvalidRelease) => {
-      if(!('version' in a)) return 1
-      if(!('version' in b)) return -1
-      return semver.compare(b.version, a.version)
-    })
-
-    return releases;
+    return this.sortReleases(releases);
   }
 
   async getLatest() : Promise<IRelease | null>  {
