@@ -1,4 +1,4 @@
-const Updater = require('./updater')
+const Updater = require('../updater')
 const { autoUpdater, CancellationToken } = require("electron-updater")
 const { dialog } = require('electron')
 
