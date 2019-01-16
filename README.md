@@ -20,8 +20,9 @@ Electron App Manager provides fast, secure, minimal and continuous updates + ver
 - Zip compression
 - Rollback to latest (selected / working) version
 - Version chooser
+- Staged rollouts
 - Menu integration & Dialogs
-- *Hot App Loading* from memory (no write to fs)
+- [*Hot App Loading*](#hot-loading-experimental) from memory (no write to fs)
 - Minimal dependency footprint (for better security)
 - Automatic package integrity checks
 
