@@ -1,5 +1,5 @@
 {
-  "name": "@philipplgh/electron-app-updater",
+  "name": "@philipplgh/electron-app-manager",
   "version": "1.0.8",
   "description": "",
   "main": "index.js",
