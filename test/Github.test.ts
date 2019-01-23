@@ -45,7 +45,7 @@ describe.skip('Github', () => {
       assert.equal(releases.length, 21)
     });
 
-    it('should sort releases using semver and return them descending (latest first)', async () => {
+    it('sorts releases using semver and return them descending (latest first)', async () => {
       // releases are returned in a shuffled order by the mock server
       let releases = await githubRepo.getReleases()
       let sortedVersions = '0.1.19-alpha, 0.1.10-alpha, 0.1.9-alpha, 0.1.9-alpha, 0.1.9-alpha, 0.1.9-alpha, 0.1.9-alpha, 0.1.9-alpha, 0.1.9-alpha, 0.1.9-alpha, 0.1.9-alpha, 0.1.9-alpha, 0.1.5-alpha, 0.1.3, 0.1.3-alpha, 0.1.2, 0.1.2, 0.1.1, 0.1.0, 0.1.0, no version'
@@ -53,7 +53,7 @@ describe.skip('Github', () => {
       assert.equal(versions, sortedVersions)
     });
 
-    it.skip("should handle pagination", async function() {
+    it.skip("handles pagination", async function() {
       
     });
 
@@ -66,7 +66,7 @@ describe.skip('Github', () => {
       assert.equal(release.version, '0.1.19-alpha')
     });
 
-    it('should return ReleaseInfoExtended if detached metadata.json present in assets', async () => {
+    it('returns ReleaseInfoExtended if detached metadata.json present in assets', async () => {
       let release = await githubRepo.getLatest() as IReleaseExtended
       const sha512 = '047bb4e33fb42e953db1978eb1b320fb4615d6dacb9ae0369179c15eb3ed37fe5b6a0030c35abf1738ffac9e0417e63771c189f2ac690cc3f5259daa222b4390'
       assert.equal(release.checksums.sha512, sha512)

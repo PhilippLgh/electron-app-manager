@@ -155,7 +155,7 @@ class Github extends RepoBase implements IRemoteRepository {
     return release as IRelease
   }
 
-  async download(release: IRelease, onProgress = () => {}): Promise<Buffer> {
+  async download(release: IRelease, onProgress = (progress : number) => {}): Promise<Buffer> {
     const { location } = release;
     let data = await download(location, onProgress);
     return data;

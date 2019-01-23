@@ -159,7 +159,7 @@ class Azure extends RepoBase implements IRemoteRepository {
     return release
   }
 
-  async download(release : IRelease, onProgress = (progress? : Number) => {}) : Promise<Buffer> {
+  async download(release : IRelease, onProgress = (progress : number) => {}) : Promise<Buffer> {
     const { location } = release;
     let data = await download(location, onProgress);
     return data;
