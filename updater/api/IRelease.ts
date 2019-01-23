@@ -18,8 +18,10 @@ export interface IRelease extends IReleaseBase {
   size: Number;
   tag: string;
   location: string;
-  repository: string; //url
+  repository: string; // url
   error: void;
+  signature?: string // url
+  metadata?: string // url
 }
 
 export interface IMetadata {
@@ -47,6 +49,7 @@ export interface IReleaseExtended extends IRelease {
     sha256?: string
     sha512?: string
   },
+  signature?: string
 }
 
 interface Publisher {
