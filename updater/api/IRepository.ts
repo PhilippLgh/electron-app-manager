@@ -1,6 +1,8 @@
 import { IRelease, IInvalidRelease, IReleaseExtended } from './IRelease'
 
 export interface IRepository {
+
+  name : string;
   
   getReleases(): Promise<Array<(IRelease | IInvalidRelease)>>;
 

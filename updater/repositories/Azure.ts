@@ -25,6 +25,8 @@ class Azure extends RepoBase implements IRemoteRepository {
   repoUrl: string;
   onReleaseParsed: Function;
 
+  public name: string = 'Azure';
+
   constructor(repoUrl : string, options? : any){
     super()
     this.repoUrl = repoUrl

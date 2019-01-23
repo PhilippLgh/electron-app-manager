@@ -12,6 +12,8 @@ class Github extends RepoBase implements IRemoteRepository {
   private owner: string;
   private repo: string;
 
+  public name: string = 'Github';
+
   constructor(repoUrl : string){
     super()
     // WARNING: For unauthenticated requests, the rate limit allows for up to 60 requests per hour.
