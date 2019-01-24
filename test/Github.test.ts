@@ -5,7 +5,7 @@ import nock from 'nock'
 import semver from 'semver'
 import { IRelease, IReleaseExtended } from '../updater/api/IRelease';
 
-describe.skip('Github', () => {
+describe('Github', () => {
 
   /**
    * Shuffles array in place.
@@ -22,12 +22,12 @@ describe.skip('Github', () => {
     return a;
   }
 
-  const scope = nock("https://api.github.com")
+  const scope = nock("https://api.github.com", {allowUnmocked: true})
     .persist() // don't remove interceptor after request -> always return mock obj
     .get("/repos/ethereum/mist-ui/releases")
     .reply(200, shuffle(require('./fixtures/githubReleases1.json')))
 
-  const scope2 = nock("https://github.com")
+  const scope2 = nock("https://github.com", {allowUnmocked: true})
     .persist()
     .head("/ethereum/mist-ui/releases/download/v0.1.19-alpha_1544698606/metadata.json")
     .reply(200, 'ok')
@@ -70,6 +70,17 @@ describe.skip('Github', () => {
       let release = await githubRepo.getLatest() as IReleaseExtended
       const sha512 = '047bb4e33fb42e953db1978eb1b320fb4615d6dacb9ae0369179c15eb3ed37fe5b6a0030c35abf1738ffac9e0417e63771c189f2ac690cc3f5259daa222b4390'
       assert.equal(release.checksums.sha512, sha512)
+    });
+
+    it('handles deleted or non-existent repos', async () => {
+      const repo = "https://github.com/foo/bazbaz"
+      const badGithubRepo = new GithubRepo(repo)
+      const latest = badGithubRepo.getLatest()
+      assert.property(latest, 'error')
+    });
+
+    it('handles moved repos', async () => {
+
     });
 
   })
