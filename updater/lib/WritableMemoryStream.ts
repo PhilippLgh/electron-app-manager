@@ -1,11 +1,13 @@
-const stream = require('stream')
+import stream from 'stream'
+export default class WMStrm extends stream.Writable {
+  
+  buffer: Buffer | undefined;
 
-class WMStrm extends stream.Writable {
   constructor(){
     super()
     this.buffer = undefined
   }
-  _write (chunk, enc, cb) {
+  _write (chunk : any, enc : string, cb : Function) {
     var buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk, enc);
     if(this.buffer === undefined) {
       this.buffer = buffer
@@ -15,5 +17,3 @@ class WMStrm extends stream.Writable {
     cb()
   }
 }
-
-module.exports = WMStrm
