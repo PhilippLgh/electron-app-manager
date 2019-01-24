@@ -3,79 +3,9 @@ import { IRepository } from '../api/IRepository'
 import RepoBase from '../api/RepoBase'
 import fs from 'fs'
 import path from 'path'
-//@ts-ignore
-import AdmZip from 'adm-zip'
 
-class AppPackage {
-
-  private zip: any;
-  private packagePath: string;
-  isAsar: boolean;
-
-  constructor(release : IRelease){
-    this.packagePath = release.location
-    this.zip = new AdmZip(this.packagePath)
-
-    // FIXME temp. deactivate asar
-    this.isAsar = false
-  }
-
-  get detachedMetadataPath() : string {
-    return this.packagePath + '.metadata.json'
-  }
-
-  hasEmbeddedMetadata(): any {
-    // FIXME bad path /metadata.json -.> _META_ dir
-    return this.zip.getEntry('metadata.json') !== null
-  }
-
-  hasDetachedMetadata(): any {
-    return fs.existsSync(this.detachedMetadataPath)
-  }
-
-  getEmbeddedMetadata(): any {
-
-    if(this.isAsar){
-      const includedMetadataPath = path.join(this.packagePath, 'metadata.json')
-      // FIXME this only works for asar files in electron with patched fs
-      const metadataContents = fs.readFileSync(includedMetadataPath, 'utf8')
-      let m = JSON.parse(metadataContents);
-      // TODO validate
-      // TODO verify integratiy and authenticity
-      return {
-        name: m.name,
-        version: `${m.version}${m.channel ? ('-' + m.channel) : ''}`,
-        location: this.packagePath
-      }
-    }
-
-    try {
-      return JSON.parse(this.zip.getEntry('metadata.json').getData().toString())
-    } catch (error) {
-      return null
-    }
-  }
-
-  getDetachedMetadata() : any {
-    try {
-      return JSON.parse(fs.readFileSync(this.detachedMetadataPath, 'utf8'))
-    } catch (error) {
-      // console.log('could not read detached metadata', error)
-      return null
-    }
-  }
-
-  getMetadata(): any {
-    if(this.hasEmbeddedMetadata()){
-      return this.getEmbeddedMetadata()
-    } else if(this.hasDetachedMetadata()){
-      return this.getDetachedMetadata()
-    } else {
-      return null
-    }
-  }
-
-}
+import { verifyPGP, checksumMd5 } from '../tasks/verify'
+import AppPackage from '../AppPackage'
 
 // for different caching strategies see
 // https://serviceworke.rs/caching-strategies.html
@@ -90,7 +20,7 @@ class Cache extends RepoBase implements IRepository {
     this.cacheDirPath = cacheDirPath
   }
 
-  toRelease(fileName : string){
+  async toRelease(fileName : string){
 
     const name = path.parse(fileName).name
     const location = path.join(this.cacheDirPath, fileName)
@@ -108,8 +38,14 @@ class Cache extends RepoBase implements IRepository {
       location
     } as any
 
-    const appPackage = new AppPackage(release)
+    const appPackage = new AppPackage(release.location)
     const metadata = appPackage.getMetadata()
+
+    if(metadata.signature){
+      //console.log('signature found', release.signature)
+      //let result = await verifyPGP(binFileName, pubKeyBuildServer, metadata.signature)
+      //console.log('is sig ok?', result)
+    }
 
     // console.log('metadata', metadata)
 
@@ -128,9 +64,12 @@ class Cache extends RepoBase implements IRepository {
     if(!filesFound){
       return []
     }
-    let releases = files.map(file => this.toRelease(file))
+    let releases = files.map(async file => this.toRelease(file))
+    releases = await Promise.all(releases)
+
     // releases = releases.filter(release => ('error' in release))
 
+    // @ts-ignore
     const sorted = releases.sort(this.compareVersions);
 
     return sorted as any // FIXME remove any
