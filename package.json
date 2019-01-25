@@ -5,7 +5,8 @@
   "main": "dist/index.js",
   "scripts": {
     "test": "mocha --require ts-node/register test/**/*.ts",
-    "build": "tsc -p ./tsconfig.json"
+    "static-files": "copyfiles updater/electron/ui/splash.html updater/electron/ui/preload.js dist/",
+    "build": "yarn static-files && tsc -p ./tsconfig.json"
   },
   "author": "",
   "license": "ISC",
@@ -19,11 +20,13 @@
   },
   "devDependencies": {
     "@types/chai": "^4.1.7",
+    "@types/electron": "^1.6.10",
     "@types/mocha": "^5.2.5",
     "@types/nock": "^9.3.0",
     "@types/node": "^10.12.18",
     "@types/semver": "^5.5.0",
     "chai": "^4.2.0",
+    "copyfiles": "^2.1.0",
     "mocha": "^5.2.0",
     "nock": "^10.0.6",
     "ts-node": "^7.0.1",
