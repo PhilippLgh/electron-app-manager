@@ -1,14 +1,15 @@
 import { IRelease, IInvalidRelease, IMetadata, IReleaseExtended } from '../api/IRelease'
 import { IRemoteRepository } from '../api/IRepository'
 import RepoBase from '../api/RepoBase'
-const { download, downloadJson } = require('../lib/downloader')
+// @ts-ignore
+import { download, downloadJson } from '../lib/downloader'
 import semver from 'semver'
 import GitHub, { ReposListReleasesResponseItem } from '@octokit/rest'
 
 class Github extends RepoBase implements IRemoteRepository {
   
   private client: GitHub;
-  private repoUrl: string;
+  private _repositoryUrl: string;
   private owner: string;
   private repo: string;
 
@@ -19,11 +20,15 @@ class Github extends RepoBase implements IRemoteRepository {
     // WARNING: For unauthenticated requests, the rate limit allows for up to 60 requests per hour.
     this.client = new GitHub();
 
-    this.repoUrl = repoUrl;
+    this._repositoryUrl = repoUrl;
     let parts = repoUrl.split('/')
     let l = parts.length 
     this.owner = parts[l-2]
     this.repo = parts[l-1].replace('.git', '')
+  }
+
+  get repositoryUrl(){
+    return this._repositoryUrl
   }
 
   private toRelease(releaseInfo : ReposListReleasesResponseItem) : (IRelease | IInvalidRelease) {
@@ -64,7 +69,7 @@ class Github extends RepoBase implements IRemoteRepository {
     return {
       name: releaseInfo.tag_name,
       displayName: '',
-      repository: this.repoUrl,
+      repository: this.repositoryUrl,
       fileName: app.name,
       commit: releaseInfo.target_commitish,
       publishedDate: new Date(),
@@ -125,15 +130,20 @@ class Github extends RepoBase implements IRemoteRepository {
 
   async getReleases(): Promise<Array<(IRelease | IInvalidRelease)>> {
     // FIXME use pagination
-    let releaseInfo = await this.client.repos.listReleases({
-      owner: this.owner,
-      repo: this.repo
-    });
+    try {
+      let releaseInfo = await this.client.repos.listReleases({
+        owner: this.owner,
+        repo: this.repo
+      });
+      
+      // convert to proper format
+      let releases = releaseInfo.data.map(this.toRelease.bind(this))
 
-    // convert to proper format
-    let releases = releaseInfo.data.map(this.toRelease.bind(this))
-
-    return this.sortReleases(releases);
+      return this.sortReleases(releases);
+    } catch (error) {
+      
+      return []
+    }
   }
 
   async getLatest() : Promise<IRelease | null>  {
