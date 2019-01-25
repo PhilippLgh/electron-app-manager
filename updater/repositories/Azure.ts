@@ -1,11 +1,10 @@
 import { IRelease, IInvalidRelease, IMetadata, IReleaseExtended } from '../api/IRelease'
 import { IRemoteRepository } from '../api/IRepository'
 import RepoBase from '../api/RepoBase'
-const { download, downloadJson } = require('../lib/downloader')
+import { download, downloadJson } from '../lib/downloader'
 import path from 'path'
 import url from 'url'
 import semver from 'semver'
-import { release } from 'os';
 
 const { extractVersion, parseXml } = require('../util')
 interface AzureBlob {
@@ -19,6 +18,19 @@ interface AzureBlob {
   }>
 }
 
+const SUPPORTED_EXTENSIONS = ['.zip', '.tar.gz', '.tar']
+
+// this helper is especially used to support .tar.gz
+const getExtension = (fileName : string) => {
+  for (let i = 0; i < SUPPORTED_EXTENSIONS.length; i++) {
+    const ext = SUPPORTED_EXTENSIONS[i];
+    if(fileName.endsWith(ext)){
+      return ext
+    }
+  }
+  return path.extname(fileName)
+}
+
 // https://docs.microsoft.com/en-us/rest/api/storageservices/blob-service-rest-api
 class Azure extends RepoBase implements IRemoteRepository {
   
@@ -26,12 +38,18 @@ class Azure extends RepoBase implements IRemoteRepository {
   onReleaseParsed: Function;
 
   public name: string = 'Azure';
+  filter: Function;
 
   constructor(repoUrl : string, options? : any){
     super()
     this.repoUrl = repoUrl
     this.onReleaseParsed = options && options.onReleaseParsed
+    this.filter = options && options.filter
     this.toRelease = this.toRelease.bind(this)
+  }
+
+  get repositoryUrl(){
+    return this.repoUrl
   }
 
   toRelease(releaseInfo : AzureBlob) : IRelease {
@@ -45,7 +63,8 @@ class Azure extends RepoBase implements IRemoteRepository {
       'LeaseState': [ 'available' ]
     */
     const fileName = releaseInfo.Name[0]
-    const name = path.parse(fileName).name; 
+    let ext = getExtension(fileName)
+    const name = fileName.slice(0, -ext.length); 
     const Properties = releaseInfo.Properties[0]
     const lastModified = Properties['Last-Modified'][0]
     const etag = Properties['Etag'][0]
@@ -111,11 +130,25 @@ class Azure extends RepoBase implements IRemoteRepository {
     const packages : any = []
     releases.forEach((release : IRelease) => {
       let { fileName, version } = release
+      const extension = fileName.split('.').slice(1).join('.')
+      
+      let isExtensionSupported = false
+      // TODO can be performance optimized
+      SUPPORTED_EXTENSIONS.forEach(ext => {
+        if(fileName.endsWith(ext)){
+          isExtensionSupported = true
+        }
+      });
+
       if(fileName && fileName.endsWith('.asc')){
         mapping[fileName] = release
-      } else if(fileName.endsWith('.zip') && version){
+      } else if(isExtensionSupported && version){
         // TODO client-defined filter
-        if(!fileName.includes('unstable')){
+        if(this.filter){
+          if(this.filter(release)){
+            packages.push(release)
+          }
+        } else {
           packages.push(release)
         }
       } else {
