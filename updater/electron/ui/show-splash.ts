@@ -1,8 +1,9 @@
-const path = require('path')
-const fs = require('fs')
-const { app, BrowserWindow } = require('electron')
+import path from 'path'
+import fs from 'fs'
+import { app, BrowserWindow } from 'electron'
+import AppManager from '../../AppManager';
 
-function createWindow(options, data = {}) {
+function createWindow(options : any, data = {}) {
 
   const preloadPath = path.join(__dirname, 'preload.js')
 
@@ -17,7 +18,7 @@ function createWindow(options, data = {}) {
   }
 
   if(!fs.existsSync(preloadPath)){
-    throw new Error('for security reasons application cannot be started without preload script: does not exist')
+    throw new Error('for security reasons application cannot be started without preload script - path does not exist: '+preloadPath)
   }
 
   // don't make any changes here
@@ -59,8 +60,10 @@ function createWindow(options, data = {}) {
   let win = new BrowserWindow(windowConfig)
 
   // pass initial data to window
+  // @ts-ignore
   win.data = JSON.stringify(data) 
 
+  // @ts-ignore
   win.update = changes => {
     win.webContents.send('__update', {
       ...changes
@@ -71,9 +74,9 @@ function createWindow(options, data = {}) {
 
 }
 
-function showSplash(appUpdater, indexHtml = path.join(__dirname, 'splash.html')){
+function showSplash(appUpdater : AppManager, indexHtml = path.join(__dirname, 'splash.html')){
 
-  let splash = null
+  let splash : any = null
 
   const createSplash = () => {
     splash = createWindow({
@@ -81,7 +84,7 @@ function showSplash(appUpdater, indexHtml = path.join(__dirname, 'splash.html'))
       height: 200,
       frame: false
     }, {
-      name: appUpdater.repo,
+      name: appUpdater.repository,
       progress: 0
     })
     // TODO make sure indexHtml exists
@@ -94,7 +97,7 @@ function showSplash(appUpdater, indexHtml = path.join(__dirname, 'splash.html'))
     app.once('ready', createSplash)
   }
 
-  const updateSplash = (app, progress) => {
+  const updateSplash = (app : any, progress : any) => {
     if(!splash) return 
     splash.update({
       app,
