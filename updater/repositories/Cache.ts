@@ -6,6 +6,9 @@ import path from 'path'
 
 import { verifyPGP, checksumMd5 } from '../tasks/verify'
 import AppPackage from '../AppPackage'
+import { getExtension, hasSupportedExtension } from '../util'
+
+const SUPPORTED_EXTENSIONS = ['.zip', '.tar.gz', '.tar']
 
 // for different caching strategies see
 // https://serviceworke.rs/caching-strategies.html
@@ -25,7 +28,10 @@ class Cache extends RepoBase implements IRepository {
     const name = path.parse(fileName).name
     const location = path.join(this.cacheDirPath, fileName)
 
-    if(!fileName.endsWith('.zip')){
+    let ext = getExtension(fileName)
+    let isExtensionSupported = SUPPORTED_EXTENSIONS.includes(ext)
+
+    if(!isExtensionSupported){
       return {
         name,
         error: 'Unsupported package extension: ' + fileName
@@ -59,7 +65,7 @@ class Cache extends RepoBase implements IRepository {
 
   async getReleases(): Promise<Array<(IRelease | IInvalidRelease)>> {
     let files = fs.readdirSync(this.cacheDirPath)
-    files = files.filter(f => f.endsWith('.zip'))
+    files = files.filter(hasSupportedExtension)
     const filesFound = files && files.length > 0
     if(!filesFound){
       return []
@@ -71,7 +77,6 @@ class Cache extends RepoBase implements IRepository {
 
     // @ts-ignore
     const sorted = releases.sort(this.compareVersions);
-
     return sorted as any // FIXME remove any
   }
   

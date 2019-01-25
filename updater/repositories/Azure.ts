@@ -2,6 +2,7 @@ import { IRelease, IInvalidRelease, IMetadata, IReleaseExtended } from '../api/I
 import { IRemoteRepository } from '../api/IRepository'
 import RepoBase from '../api/RepoBase'
 import { download, downloadJson } from '../lib/downloader'
+import { getExtension, hasSupportedExtension } from '../util'
 import path from 'path'
 import url from 'url'
 import semver from 'semver'
@@ -19,17 +20,6 @@ interface AzureBlob {
 }
 
 const SUPPORTED_EXTENSIONS = ['.zip', '.tar.gz', '.tar']
-
-// this helper is especially used to support .tar.gz
-const getExtension = (fileName : string) => {
-  for (let i = 0; i < SUPPORTED_EXTENSIONS.length; i++) {
-    const ext = SUPPORTED_EXTENSIONS[i];
-    if(fileName.endsWith(ext)){
-      return ext
-    }
-  }
-  return path.extname(fileName)
-}
 
 // https://docs.microsoft.com/en-us/rest/api/storageservices/blob-service-rest-api
 class Azure extends RepoBase implements IRemoteRepository {
@@ -130,10 +120,8 @@ class Azure extends RepoBase implements IRemoteRepository {
     const packages : any = []
     releases.forEach((release : IRelease) => {
       let { fileName, version } = release
-      const extension = fileName.split('.').slice(1).join('.')
       
-      let ext = getExtension(fileName)
-      let isExtensionSupported = SUPPORTED_EXTENSIONS.includes(ext)
+      let isExtensionSupported = hasSupportedExtension(fileName)
 
       if(fileName && fileName.endsWith('.asc')){
         mapping[fileName] = release
@@ -179,7 +167,12 @@ class Azure extends RepoBase implements IRemoteRepository {
 
   async getLatest(): Promise<IRelease | IReleaseExtended | null> {
     const releases = await this.getReleases()
-    const release = releases[0] as any
+    // @ts-ignore
+    const filtered = releases.filter(release => semver.lt(semver.coerce(release.version).version, '1.9.0'))
+    if (filtered.length <= 0) {
+      return null
+    }
+    const release = filtered[0] as any
     if(release.signature){
       let signatureData = await download(release.signature)
       release.signature = signatureData.toString()
