@@ -132,13 +132,8 @@ class Azure extends RepoBase implements IRemoteRepository {
       let { fileName, version } = release
       const extension = fileName.split('.').slice(1).join('.')
       
-      let isExtensionSupported = false
-      // TODO can be performance optimized
-      SUPPORTED_EXTENSIONS.forEach(ext => {
-        if(fileName.endsWith(ext)){
-          isExtensionSupported = true
-        }
-      });
+      let ext = getExtension(fileName)
+      let isExtensionSupported = SUPPORTED_EXTENSIONS.includes(ext)
 
       if(fileName && fileName.endsWith('.asc')){
         mapping[fileName] = release
