@@ -142,7 +142,7 @@ export default class AppManager extends EventEmitter{
     return latestRemote
   }
 
-  async download(release : IRelease, {writePackageData = true, writeDetachedMetadata = true} = {} ){
+  async download(release : IRelease, {writePackageData = true, writeDetachedMetadata = true, targetDir = this.cache.cacheDirPath} = {} ){
 
     let pp = 0;
     let onProgress = (p : number) => {
@@ -154,19 +154,17 @@ export default class AppManager extends EventEmitter{
       }
     }
     const packageData = await this.remote.download(release, onProgress)
-    const location = path.join(this.cache.cacheDirPath, release.fileName)
+    const location = path.join(targetDir, release.fileName)
 
     if(writePackageData){
       if(writeDetachedMetadata){
-        const detachedMetadataPath = path.join(this.cache.cacheDirPath, release.fileName + '.metadata.json')
+        const detachedMetadataPath = path.join(targetDir, release.fileName + '.metadata.json')
         fs.writeFileSync(detachedMetadataPath, JSON.stringify(release, null, 2))
       }
       // TODO patch package metadata if it doesn't exist
       fs.writeFileSync(location, packageData)
-
     } else{
       this.emit('update-downloaded', release)
-
       return {
         ...release,
         location: 'memory',
@@ -181,12 +179,20 @@ export default class AppManager extends EventEmitter{
       location
     }
   }
-
   async hotLoad(release : IRelease | undefined){
     const hotLoader = new HotLoader(this)
     // load app to memory and serve from there
     const hotLoaderUrl = await hotLoader.load(release)
     return hotLoaderUrl
+  }
+  async getEntries(release : IRelease){
+    return this.cache.getEntries(release)
+  }
+  async getEntry(release : IRelease, entryPath : string){
+    return this.cache.getEntry(release, entryPath)
+  }
+  async extract(release : IRelease){
+    return this.cache.extract(release)
   }
 
 }

@@ -55,9 +55,10 @@ class Cache extends RepoBase implements IRepository {
 
     // console.log('metadata', metadata)
 
+    // order is imortant or location e.g. would be url
     release = {
-      ...release,
-      ...metadata
+      ...metadata,
+      ...release
     }
 
     return release
@@ -87,6 +88,18 @@ class Cache extends RepoBase implements IRepository {
       return null;
     }
     return filtered[0]
+  }
+  async getEntries(release : IRelease){
+    const appPackage = new AppPackage(release.location)
+    return appPackage.getEntries()
+  }
+  async getEntry(release : IRelease, entryPath : string){
+    const appPackage = new AppPackage(release.location)
+    return appPackage.getEntry(entryPath)
+  }
+  async extract(release: IRelease): Promise<any> {
+    const appPackage = new AppPackage(release.location)
+    return appPackage.extract()
   }
 
 }
