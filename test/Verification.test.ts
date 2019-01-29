@@ -1,7 +1,6 @@
 const {verifyPGP, checksumMd5} = require('../updater/tasks/verify')
 import { assert } from 'chai'
 
-
 describe('Verification', () => {
 
   const binFileName = __dirname + '/fixtures/BinCache/geth-windows-amd64-1.8.20-24d727b6.exe'
@@ -62,12 +61,12 @@ r1SPANB30cTzENxbOwMnuvSopLq2jxmHYQSLVeQC9fbnov8W1ELBaKBrftn2MzgmWt/9DVpB
 -----END PGP PUBLIC KEY BLOCK-----
   `
 
-  it("should verify md5 checksums", async function() {
+  it("verifies md5 checksums", async function() {
       let result = checksumMd5(binFileName)
       assert.equal(binChecksumMd5, result)
   });
 
-  it("should verify signature", async function() {
+  it("verifies pgp signatures", async function() {
     let result = await verifyPGP(binFileName, pubKeyBuildServer, detachedSig)
     assert.isTrue(result)
   });

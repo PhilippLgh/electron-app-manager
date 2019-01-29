@@ -152,6 +152,7 @@ export default class AppPackage {
             relPath,
             size,
             type,
+            // TODO getDataStream()
             getData: async () => {
               let fileData = await this._getEntryData(relPath)
               return fileData

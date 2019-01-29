@@ -151,7 +151,7 @@ class Github extends RepoBase implements IRemoteRepository {
     // might only be a patch fix for previous version
     let releases = await this.getReleases();
     if (releases.length <= 0) {
-      return null;
+      return null
     }
     let temp = releases[0];
     if(temp.error !== undefined){
