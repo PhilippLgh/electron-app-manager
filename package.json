@@ -1,6 +1,6 @@
 {
   "name": "@philipplgh/electron-app-manager",
-  "version": "1.0.8",
+  "version": "0.8.0",
   "description": "",
   "main": "dist/index.js",
   "scripts": {
