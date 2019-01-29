@@ -8,6 +8,7 @@ import fs from 'fs'
 import path from 'path'
 import semver from 'semver';
 import HotLoader from './HotLoader';
+import { BrowserWindow } from 'electron';
 
 interface IUpdaterOptions {
   repository: string;
@@ -62,7 +63,7 @@ export default class AppManager extends EventEmitter{
     if(cacheDir){
       this.cache = new Cache(cacheDir)
     } else {
-      this.cache = new Cache(__dirname)
+      this.cache = new Cache(process.cwd())
     }
 
     this.checkForUpdates = this.checkForUpdates.bind(this)
@@ -77,8 +78,12 @@ export default class AppManager extends EventEmitter{
 
   }
 
-  get repository() : string{
+  get repository() : string {
     return this.remote.repositoryUrl
+  }
+
+  get cacheDir() : string {
+    return this.cache.cacheDirPath
   }
 
   private startUpdateRoutine(intervalMs : number){
@@ -118,6 +123,10 @@ export default class AppManager extends EventEmitter{
       return latestRemote
     }
     return null 
+  }
+
+  async getReleases(){
+    return this.remote.getReleases()
   }
 
   async getLatestCached(){
@@ -184,6 +193,21 @@ export default class AppManager extends EventEmitter{
     // load app to memory and serve from there
     const hotLoaderUrl = await hotLoader.load(release)
     return hotLoaderUrl
+  }
+  async hotLoadLatest(win : BrowserWindow) {
+    win.hide()
+    const latest = await this.getLatestRemote()
+    if(!latest) return null
+    const hotUrl = await this.hotLoad(latest)
+    if(!hotUrl) return null
+    win.loadURL(hotUrl)
+    win.show()
+    return win
+  }
+  async hotLoadPrepare(win : BrowserWindow){
+    // TODO returns a prepared window that will load in-place
+    // this allows to display a spinner / progress UI while 'latest' is fetched 
+    // client: win.setApp(latest)
   }
   async getEntries(release : IRelease){
     return this.cache.getEntries(release)
