@@ -191,22 +191,15 @@ export default class AppManager extends EventEmitter{
   async hotLoad(release : IRelease | undefined){
     const hotLoader = new HotLoader(this)
     // load app to memory and serve from there
-    const hotLoaderUrl = await hotLoader.load(release)
-    return hotLoaderUrl
+    const hotUrl = await hotLoader.load(release)
+    if(!hotUrl) return null
+    return hotUrl
   }
-  async hotLoadLatest(win : BrowserWindow) {
-    win.hide()
+  async hotLoadLatest() {
     const hotLoader = new HotLoader(this)
     const hotUrl = await hotLoader.load()
     if(!hotUrl) return null
-    win.loadURL(hotUrl)
-    win.show()
-    return win
-  }
-  async hotLoadPrepare(win : BrowserWindow){
-    // TODO returns a prepared window that will load in-place
-    // this allows to display a spinner / progress UI while 'latest' is fetched 
-    // client: win.setApp(latest)
+    return hotUrl
   }
   async getEntries(release : IRelease){
     return this.cache.getEntries(release)

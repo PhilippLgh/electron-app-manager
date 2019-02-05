@@ -41,7 +41,7 @@ export default class HotLoader {
       throw new Error('hot load failed: no release was provided or found')
     }
 
-    console.log('hot load release', release)
+    // console.log('hot load release', release)
     const result = await this.appManager.download(release, {writePackageData: false})
       
     // @ts-ignore
