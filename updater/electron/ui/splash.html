@@ -1,46 +1,302 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="X-UA-Compatible" content="ie=edge">
-  <title>Document</title>
+  <title>Electron App Manager</title>
   <style>
-    body{
-      /*background-color: black;
-      color: white
-      */
-    }
-    progress {
+    html,
+    body {
+      margin: 0;
+      padding: 0;
       width: 100%;
-      height: 30px
+      height: 100%;
+      overflow: hidden;
+    }
+
+    .container {
+      width: 100%;
+      height: 100%;
+    }
+
+    .brand {
+      float: left;
+      color: #777;
+      padding-left: 8px;
+      padding-top: 13px;
+      font-size: .8rem;
+      font-family: Helvetica, Arial, sans-serif
+    }
+
+    .container .controls {
+      position: absolute;
+      width: 100%
+    }
+
+    .controls .button {
+      float: right;
+      color: #777;
+      padding-top: 8px;
+      padding-right: 13px;
+      font-size: 1.3rem;
+      font-weight: 100;
+      cursor: pointer;
+    }
+
+    canvas {
+      font-family: 'Font Awesome 5 Brands';
+      font-weight: 900;
+    }
+
+    @keyframes blink {
+      0% {
+        opacity: .2;
+      }
+      20% {
+        opacity: 1;
+      }
+      100% {
+        opacity: .2;
+      }
+    }
+
+    .overlay {
+      background: linear-gradient(to bottom, #ffffffcc , #fbfbfbad);
+      width: 100%;
+      height: 100%;
+      position: absolute;
+    }
+
+    .flash {
+      animation-name: blink;
+      animation-duration: 1.8s;
+      animation-iteration-count: infinite;
+      animation-fill-mode: both;
     }
   </style>
-</head>
-<body>
-
-  <h3 id="title"></h3>
-  <progress id="progress" style="display:none" value="0" max="100"></progress>
-  <textarea id="log" style="display:none" name="log" cols="30" rows="10"></textarea>
 
   <script>
-    let title = document.getElementById('title')
-    let log = document.getElementById('log')
+    const PIXEL_RATIO = (function () {
+      let ctx = document.createElement("canvas").getContext("2d"),
+        dpr = window.devicePixelRatio || 1,
+        bsr = ctx.webkitBackingStorePixelRatio ||
+          ctx.mozBackingStorePixelRatio ||
+          ctx.msBackingStorePixelRatio ||
+          ctx.oBackingStorePixelRatio ||
+          ctx.backingStorePixelRatio || 1;
+      return dpr / bsr;
+    })();
 
-    title.innerHTML = `Fetching info from: \n ${window.data.name}`
+    createHiDPICanvas = function (w, h, ratio) {
+      if (!ratio) { ratio = PIXEL_RATIO; }
+      let canvas = document.createElement("canvas");
+      canvas.width = w * ratio;
+      canvas.height = h * ratio;
+      canvas.style.width = w + "px";
+      canvas.style.height = h + "px";
+      canvas.getContext("2d").setTransform(ratio, 0, 0, ratio, 0, 0);
+      return canvas;
+    }
+  </script>
 
-    window.addEventListener('update', function (e) {
-      let data = e.detail
-      log.value = log.value + '\n' + JSON.stringify(data)
-      if(data.app){
-        title.innerHTML = `Loading App: ${data.app.name}`
-        progress.style = "display:block"
-        progress.value = e.detail.progress
+  <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.0/css/all.css" integrity="sha384-lZN37f5QGtY3VHgisS14W3ExzMWZxybE1SJSEsQp9S+oqd12jhcu+A56Ebc1zFSJ"
+  crossorigin="anonymous">
+
+</head>
+
+<body style="-webkit-app-region: drag">
+
+  <div id="container" class="container" style="-webkit-app-region: drag">
+    <div id="overlay" class="overlay flash" style="-webkit-app-region: drag"></div>
+    <div class="controls" style="-webkit-app-region: drag">
+      <span class="brand">Electron App Updater</span>
+      <span id="close-btn" class="button">
+        <i class="fas fa-times"></i>
+      </span>
+    </div>
+  </div>
+
+  <script>
+
+    const cw = window.innerWidth
+    const ch = window.innerHeight
+
+    const initCanvas = (w, h) => {
+      const container = document.getElementById('container')
+      //Create canvas with the device resolution.
+      const canvas = createHiDPICanvas(w, h)
+      container.appendChild(canvas)
+      return canvas
+    }
+
+    const canvas = initCanvas(cw, ch)
+    // console.log('cw/ch', cw, ch)
+    const ctx = canvas.getContext('2d')
+
+    const resetCanvas = () => {
+      var grd = ctx.createLinearGradient(0, 0, cw, 0);
+      grd.addColorStop(0, "#E3E3E3");
+      grd.addColorStop(1, "#EEE");
+      ctx.fillStyle = grd;
+      ctx.fillRect(0, 0, cw, ch);
+    }
+
+    const resetProgressCanvas = () => {
+      var grd = ctx.createLinearGradient(0, ch, cw, 0);
+      grd.addColorStop(0, "#EAEAEF");
+      grd.addColorStop(1, "#FAFAFA");
+      ctx.fillStyle = grd;
+      ctx.fillRect(0, 0, cw, ch);
+    }
+
+    const hideCanvas = () => {
+      canvas.style.display = 'none'
+    }
+
+    const writeText = (text, y, s = 30) => {
+      ctx.font = s + "px Helvetica";
+      ctx.fillStyle = "#333"
+      const m = ctx.measureText(text)
+      ctx.fillText(text, (cw / 2) - (m.width / 2), y)
+    }
+
+    const writeIcon = (text, y, s = 40) => {
+      // FIXME calc font size
+      ctx.font = '900 90px "Font Awesome 5 Brands"';
+      ctx.fillStyle = "#aaa"
+      const m = ctx.measureText(text)
+      ctx.fillText(text, (cw / 2) - (m.width / 2), y + (m.width / 2))
+    }
+
+    const displayTitle = text => writeText(text, 70, 28)
+
+    const displaySubTitle = text => writeText(text, 95, 18)
+
+    const writeCenteredIcon = icon => writeIcon(icon, 140)
+
+    const writeCenteredImage = img => {
+      let imgWidth = 100
+      let imgHeight = 100
+      let headerOffset = 30
+      let x1 = ((cw/2) - (imgWidth/2)) 
+      let y1 = ((ch/2) - (imgHeight/2)) + headerOffset
+      ctx.drawImage(img, x1, y1, imgWidth, imgHeight)
+    }
+
+    const displayBottomText = text => {
+      let fontHeight = 16
+      writeText(text, ch - fontHeight, fontHeight)
+    }
+
+    const displayConnecting = (repo) => {
+      displayTitle('Processing')
+      writeCenteredIcon("\uf09b")
+      displayBottomText(repo)
+    }
+
+  </script>
+
+  <script>
+
+    // get references to DOM elements
+    const overlay = document.getElementById('overlay')
+    const closeBtn = document.getElementById('close-btn')
+    // canvas and ctx already in global scope
+
+    closeBtn.onclick = () => {
+      window.close()
+    }
+
+    const hideOverlay = () => {
+      overlay.style.display = "none"
+    }
+
+    const formatFileSize = _bytes => {
+      const fSize = (_bytes / (1024 * 1024)).toFixed(2)
+      return fSize
+    }
+
+    const getImage = async imageUrl => {
+      return new Promise((resolve, reject) => {
+        const image = new Image()
+        image.onload = function(){
+          resolve(this)
+        }
+        image.src = imageUrl
+      })
+    }
+
+    const displayProgress = (app, progress) => {
+
+      let prog = progress / 100
+
+      let appName = app.displayName
+      let _img = app.img
+      let fileSize = app.size
+      let fileProgress = formatFileSize(prog * fileSize)
+      fileSize = formatFileSize(fileSize)
+
+      let pFormatted = `${fileProgress} / ${fileSize} MB`
+
+      hideOverlay()
+
+      resetProgressCanvas()
+
+      displayTitle('Download')
+
+      displaySubTitle(`${app.displayName} - ${app.version}`)      
+
+      displayBottomText(pFormatted)
+      // writeText(pFormatted, ch * (2/3), 30)
+      ctx.save()
+      ctx.globalCompositeOperation = 'difference';
+
+      ctx.fillStyle = '#CCC';
+      ctx.fillRect(0, 0, prog * cw, ch);
+      ctx.restore()
+
+      // writeCenteredIcon("\uf09b")
+      try {
+        writeCenteredImage(_img)      
+      } catch (error) {
+        console.log('bad icon', img, error)
+        img = null
+        // TODO reset global img here to avoid more attempts
       }
-    }, false);
+    }
+
+    resetCanvas()
+
+    document.fonts.ready.then(_ => {
+      displayConnecting(window.data.name)
+    })
+
+    let imageLoading = false
+    let img = null
+    window.addEventListener('update', async function (e) {
+      const data = e.detail
+      const app = data.app
+
+      if(!imageLoading && (app.icon !== undefined)){
+        console.log('app.icon', app.icon)
+        imageLoading = true
+        img = await getImage(app.icon)
+        return
+      }
+
+      app.img = img
+      const progress = data.progress
+      // console.log('on progress', progress, data)
+      if(app) {
+        displayProgress(app, progress)
+      }
+    }, false)
 
   </script>
 
 
 </body>
+
 </html>

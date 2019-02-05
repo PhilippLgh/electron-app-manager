@@ -85,8 +85,10 @@ class Github extends RepoBase implements IRemoteRepository {
   async getMetadata(release : IRelease) : Promise<IMetadata | null> {
     try {
       const meta = await downloadJson(`https://github.com/${this.owner}/${this.repo}/releases/download/${release.tag}/metadata.json`)
-      const {md5, sha1, sha256, sha512} = meta
+      const {name, icon, md5, sha1, sha256, sha512} = meta
       return {
+        name,
+        icon,
         md5,
         sha1,
         sha256,
@@ -107,9 +109,14 @@ class Github extends RepoBase implements IRemoteRepository {
       }
     }
     // return *full release* info
-    const {md5, sha1, sha256, sha512} = meta
+    const {name, icon, md5, sha1, sha256, sha512} = meta
     return {
       ...release,
+      // overwrite with name from metadata for better quality
+      name,
+      icon,
+      // FIXME
+      displayName: name,
       checksums: {
         md5,
         sha1,

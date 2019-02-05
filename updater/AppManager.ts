@@ -196,9 +196,8 @@ export default class AppManager extends EventEmitter{
   }
   async hotLoadLatest(win : BrowserWindow) {
     win.hide()
-    const latest = await this.getLatestRemote()
-    if(!latest) return null
-    const hotUrl = await this.hotLoad(latest)
+    const hotLoader = new HotLoader(this)
+    const hotUrl = await hotLoader.load()
     if(!hotUrl) return null
     win.loadURL(hotUrl)
     win.show()

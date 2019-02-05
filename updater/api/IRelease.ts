@@ -25,6 +25,8 @@ export interface IRelease extends IReleaseBase {
 }
 
 export interface IMetadata {
+  name: string,
+  icon: string; // url | relative path  
   md5?: string
   sha1?: string
   sha256?: string
@@ -43,6 +45,7 @@ export interface IMetadata {
 }
 
 export interface IReleaseExtended extends IRelease {
+  icon: string; // url | relative path
   checksums: {
     md5?: string
     sha1?: string

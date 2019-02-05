@@ -74,27 +74,35 @@ function createWindow(options : any, data = {}) {
 
 }
 
-function showSplash(appUpdater : AppManager, indexHtml = path.join(__dirname, 'splash.html')){
-
+export const createSplash = (name : string, indexHtml = path.join(__dirname, 'splash.html')) => {
   let splash : any = null
+  splash = createWindow({
+    width: 500,
+    height: 275,
+    frame: false
+  }, {
+    name,
+    progress: 0
+  })
 
-  const createSplash = () => {
-    splash = createWindow({
-      width: 400,
-      height: 200,
-      frame: false
-    }, {
-      name: appUpdater.repository,
-      progress: 0
-    })
-    // TODO make sure indexHtml exists
-    splash.loadFile(indexHtml)
-  }
+  // TODO make sure indexHtml exists
+  splash.loadFile(indexHtml)
+
+  return splash
+}
+
+export function showSplash(appUpdater : AppManager, indexHtml = path.join(__dirname, 'splash.html')){
+
+  let repository = appUpdater.repository
+
+  let splash : any;
 
   if(app.isReady()) {
-    createSplash()
+    splash = createSplash(repository)
   } else {
-    app.once('ready', createSplash)
+    app.once('ready', () => {
+      splash = createSplash(repository)
+    })
   }
 
   const updateSplash = (app : any, progress : any) => {
@@ -111,12 +119,17 @@ function showSplash(appUpdater : AppManager, indexHtml = path.join(__dirname, 's
       appUpdater.removeListener('update-progress', updateSplash)
       appUpdater.removeListener('update-downloaded', closeSplash)
       splash.close()
+      splash = null
     }, 1500)
   }
 
   appUpdater.on('update-progress', updateSplash)
   appUpdater.on('update-downloaded', closeSplash)
 
+  return {
+    setRelease: () => {
+      console.log('set release!')
+    }
+  }
 }
 
-module.exports = showSplash

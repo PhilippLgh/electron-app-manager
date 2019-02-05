@@ -24,3 +24,6 @@ ipcRenderer.on('__update', (event, data) => {
   `)
 })
 
+window.close = () => {
+  thisWin.close()
+}

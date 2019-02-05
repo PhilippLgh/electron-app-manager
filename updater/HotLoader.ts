@@ -7,7 +7,7 @@ import AdmZip from 'adm-zip'
 let addZip : any = null
 let showSplash : any = null
 try {
-  showSplash = require('./electron//ui/show-splash')
+  showSplash = require('./electron//ui/show-splash').showSplash
   addZip = require('./electron/electron-zip-support')  
 } catch (error) {
   console.log('error during require of electron modules', error)
@@ -29,7 +29,9 @@ export default class HotLoader {
     showSplash(this.appManager)
   }
 
-  async load(release : IRelease | undefined) {
+  async load(release? : IRelease | undefined) {
+
+    showSplash(this.appManager)
 
     if(!release){
       release = await this.appManager.getLatestRemote() || undefined
@@ -39,18 +41,16 @@ export default class HotLoader {
       throw new Error('hot load failed: no release was provided or found')
     }
 
-    // TODO could already be shown while release is retrieved
-    this.showSplashscreen()
-
+    console.log('hot load release', release)
     const result = await this.appManager.download(release, {writePackageData: false})
+      
     // @ts-ignore
     const { data } = result
 
     let zip = new AdmZip(data)
 
-    console.log('entries', zip.getEntries().length)
-
     // TODO make sanity check or throw
+    // console.log('entries', zip.getEntries().length)
     
     // allows renderer to access files within zip in memory
     /**
