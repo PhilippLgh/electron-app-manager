@@ -7,9 +7,9 @@ const thisWin = remote.getCurrentWindow()
 webFrame.executeJavaScript(`
   window.data = ${thisWin.data}
   try {
-    // window.data = JSON.parse(window.data)
+    // not necessary without context isolation : window.data = JSON.parse(window.data)
   } catch (error) {
-    console.error(error)
+    console.error('preload: data provider error:', window.data)
   }
 `)
 

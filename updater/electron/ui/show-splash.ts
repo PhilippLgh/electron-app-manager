@@ -2,6 +2,7 @@ import path from 'path'
 import fs from 'fs'
 import { app, BrowserWindow } from 'electron'
 import AppManager from '../../AppManager';
+import { IRelease } from '../../api/IRelease';
 
 function createWindow(options : any, data = {}) {
 
@@ -74,7 +75,13 @@ function createWindow(options : any, data = {}) {
 
 }
 
-export const createSplash = (name : string, indexHtml = path.join(__dirname, 'splash.html')) => {
+interface AppInfo {
+  name: string;
+  version: string;
+}
+
+export const createSplash = (appInfo : IRelease | AppInfo = { name: '', version: ''}, indexHtml = path.join(__dirname, 'splash.html')) => {
+  const {name, version} = appInfo
   let splash : any = null
   splash = createWindow({
     width: 500,
@@ -82,6 +89,7 @@ export const createSplash = (name : string, indexHtml = path.join(__dirname, 'sp
     frame: false
   }, {
     name,
+    version,
     progress: 0
   })
 
@@ -91,17 +99,20 @@ export const createSplash = (name : string, indexHtml = path.join(__dirname, 'sp
   return splash
 }
 
-export function showSplash(appUpdater : AppManager, indexHtml = path.join(__dirname, 'splash.html')){
+export function showSplash(appUpdater : AppManager, release? : IRelease, indexHtml = path.join(__dirname, 'splash.html')){
 
-  let repository = appUpdater.repository
+  let appInfo  : IRelease | AppInfo = release || {
+    name: appUpdater.repository,
+    version: 'Latest'
+  }
 
   let splash : any;
 
   if(app.isReady()) {
-    splash = createSplash(repository)
+    splash = createSplash(appInfo)
   } else {
     app.once('ready', () => {
-      splash = createSplash(repository)
+      splash = createSplash(appInfo)
     })
   }
 
@@ -113,6 +124,7 @@ export function showSplash(appUpdater : AppManager, indexHtml = path.join(__dirn
     })
   }
 
+  // FIXME call closeSPlash when x is pressed in UI
   const closeSplash = () => {
     if(!splash) return 
     setTimeout(() => {
@@ -120,7 +132,7 @@ export function showSplash(appUpdater : AppManager, indexHtml = path.join(__dirn
       appUpdater.removeListener('update-downloaded', closeSplash)
       splash.close()
       splash = null
-    }, 1500)
+    }, 1000)
   }
 
   appUpdater.on('update-progress', updateSplash)

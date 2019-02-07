@@ -54,16 +54,18 @@
       0% {
         opacity: .2;
       }
+
       20% {
         opacity: 1;
       }
+
       100% {
         opacity: .2;
       }
     }
 
     .overlay {
-      background: linear-gradient(to bottom, #ffffffcc , #fbfbfbad);
+      background: linear-gradient(to bottom, #ffffffcc, #fbfbfbad);
       width: 100%;
       height: 100%;
       position: absolute;
@@ -102,7 +104,7 @@
   </script>
 
   <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.0/css/all.css" integrity="sha384-lZN37f5QGtY3VHgisS14W3ExzMWZxybE1SJSEsQp9S+oqd12jhcu+A56Ebc1zFSJ"
-  crossorigin="anonymous">
+    crossorigin="anonymous">
 
 </head>
 
@@ -172,26 +174,28 @@
 
     const displayTitle = text => writeText(text, 70, 28)
 
-    const displaySubTitle = text => writeText(text, 95, 18)
+    const displaySubTitle = text => writeText(text, 100, 18)
 
     const writeCenteredIcon = icon => writeIcon(icon, 140)
 
     const writeCenteredImage = img => {
-      let imgWidth = 100
-      let imgHeight = 100
-      let headerOffset = 30
-      let x1 = ((cw/2) - (imgWidth/2)) 
-      let y1 = ((ch/2) - (imgHeight/2)) + headerOffset
+      const imgWidth = 100
+      const imgHeight = 100
+      const headerOffset = 30
+      const x1 = ((cw / 2) - (imgWidth / 2))
+      const y1 = ((ch / 2) - (imgHeight / 2)) + headerOffset
       ctx.drawImage(img, x1, y1, imgWidth, imgHeight)
     }
 
     const displayBottomText = text => {
-      let fontHeight = 16
+      const fontHeight = 16
       writeText(text, ch - fontHeight, fontHeight)
     }
 
     const displayConnecting = (repo) => {
-      displayTitle('Fetching Latest')
+      const data = window.data || {}
+      const version = data.version || 'Latest'
+      displayTitle(`Find ${version}`)
       writeCenteredIcon("\uf09b")
       displayBottomText(repo)
     }
@@ -219,10 +223,12 @@
     }
 
     const getImage = async imageUrl => {
+      console.profile('loadimage')
       return new Promise((resolve, reject) => {
         const image = new Image()
-        image.onload = function(){
+        image.onload = function () {
           resolve(this)
+          console.profileEnd()
         }
         image.src = imageUrl
       })
@@ -244,9 +250,9 @@
 
       resetProgressCanvas()
 
-      displayTitle('Download')
+      displayTitle('Load')
 
-      displaySubTitle(`${app.displayName} - ${app.version}`)      
+      displaySubTitle(`${app.displayName} - ${app.version}`)
 
       displayBottomText(pFormatted)
       // writeText(pFormatted, ch * (2/3), 30)
@@ -258,12 +264,14 @@
       ctx.restore()
 
       // writeCenteredIcon("\uf09b")
-      try {
-        writeCenteredImage(_img)      
-      } catch (error) {
-        console.log('bad icon', img, error)
-        img = null
-        // TODO reset global img here to avoid more attempts
+      if (_img) {
+        try {
+          writeCenteredImage(_img)
+        } catch (error) {
+          console.log('bad icon', _img, error)
+          img = null
+          // TODO reset global img here to avoid more attempts
+        }
       }
     }
 
@@ -275,21 +283,25 @@
 
     let imageLoading = false
     let img = null
+    let progress = 0
     window.addEventListener('update', async function (e) {
       const data = e.detail
       const app = data.app
 
-      if(!imageLoading && (app.icon !== undefined)){
-        console.log('app.icon', app.icon)
+      if (app.icon && !imageLoading) {
         imageLoading = true
+        // console.log('app.icon', app.icon)
         img = await getImage(app.icon)
+        console.log('loading image finished at ', progress)
+        app.img = img
+        displayProgress(app, progress)
         return
       }
 
       app.img = img
-      const progress = data.progress
+      progress = data.progress
       // console.log('on progress', progress, data)
-      if(app) {
+      if (app) {
         displayProgress(app, progress)
       }
     }, false)

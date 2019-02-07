@@ -47,10 +47,11 @@ export default class HotLoader {
 
   async _load(release? : IRelease | undefined) {
 
-    showSplash(this.appManager)
-
     if(!release){
+      showSplash(this.appManager)
       release = await this.appManager.getLatestRemote() || undefined
+    } else {
+      showSplash(this.appManager, release)
     }
 
     if(!release){
