@@ -7,6 +7,7 @@ import fs from 'fs'
 import path from 'path'
 import HotLoader from './HotLoader'
 import RepoBase from './api/RepoBase'
+import MenuBuilder from './electron/menu'
 
 interface IUpdaterOptions {
   repository: string;
@@ -29,6 +30,7 @@ export default class AppManager extends RepoBase{
   cache: Cache;
   checkUpdateHandler: any; // IntervalHandler
   private hotLoader: HotLoader;
+  private menuBuilder: MenuBuilder;
   
   /**
    *
@@ -65,6 +67,7 @@ export default class AppManager extends RepoBase{
     }
 
     this.hotLoader = new HotLoader(this)
+    this.menuBuilder = new MenuBuilder(this)
 
     if(cacheDir){
       this.cache = new Cache(cacheDir)
@@ -221,6 +224,11 @@ export default class AppManager extends RepoBase{
   async persistHotLoaded() {
 
   }
+
+  async createMenuTemplate(onReload : Function){
+    return this.menuBuilder.createMenuTemplate(onReload)
+  }
+
   async getEntries(release : IRelease){
     return this.cache.getEntries(release)
   }
