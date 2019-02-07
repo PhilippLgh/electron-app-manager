@@ -26,6 +26,14 @@ const showDialog = (title: string, message: string, buttonHandler : { [index:str
   });
 }
 
+// TODO remove redundant definition
+const SOURCES = {
+  CACHE: 'Cache',
+  HOTLOADER: 'HotLoader'
+}
+
+const isRemoteSource = (source : string) => source && source !== SOURCES.CACHE && source !== SOURCES.HOTLOADER
+
 class MenuBuilder {
 
   menuTemplate : any // cached electron menu template
@@ -40,18 +48,24 @@ class MenuBuilder {
       label: 'Check Update',
       click: async () => {
         try {
-          const update = await this.appManager.checkForUpdates()
-          if (update) {
-            await showDialog('Update Found', `Update Found:\n\n${update.name} - ${update.version}\n\n${update.location}\n\n`, {
+          const updateInfo = await this.appManager.checkForUpdates()
+          const { latest } = updateInfo
+          if (updateInfo.updateAvailable) {
+            if (latest === null) {
+              throw new Error('latest release in update info must not be null')
+            }
+            await showDialog('Update Found', `Update Found:\n\n${latest.name} - ${latest.version}\n\n${latest.location}\n\n`, {
               'update': async () => {
-                // @ts-ignore
-                const appUrl = await appManager.hotLoad(update)
+                const appUrl = await this.appManager.hotLoad(latest)
                 onReload(appUrl)
               },
               'cancel': () => {
                 // do nothing
               }
             })
+          } 
+          else if(latest && !isRemoteSource(updateInfo.source)){
+            showDialog('Latest version', 'Latest version is being used')
           } else {
             showDialog('Update not found', 'Update not found')
           }

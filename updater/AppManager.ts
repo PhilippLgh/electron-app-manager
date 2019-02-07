@@ -9,6 +9,12 @@ import HotLoader from './HotLoader'
 import RepoBase from './api/RepoBase'
 import MenuBuilder from './electron/menu'
 
+interface IUpdateInfo {
+  updateAvailable : boolean,
+  source: string,
+  latest: IRelease | null
+}
+
 interface IUpdaterOptions {
   repository: string;
   auto?: boolean;
@@ -112,7 +118,7 @@ export default class AppManager extends RepoBase{
     let errorCounter = 0
 
     const check = async () => {
-      let latest = await this.checkForUpdates()
+      let { latest } = await this.checkForUpdates()
       if (latest && latest.version) {
         console.log('update found: downloading ', latest.version);
         try {
@@ -129,18 +135,30 @@ export default class AppManager extends RepoBase{
     this.checkUpdateHandler = setInterval(check, intervalMs)
   }
 
-  async checkForUpdates() : Promise<IRelease | IReleaseExtended | null> {
+  async checkForUpdates() : Promise<IUpdateInfo> {
     const latest = await this.getLatest()
     if(latest === null){
-      return null
+      return {
+        updateAvailable: false,
+        source: '',
+        latest: null
+      }
     }
 
     // latest release is not from remote -> no updates necessary
     if(latest.repository === SOURCES.CACHE || latest.repository === SOURCES.HOTLOADER){
-      return null
+      return {
+        updateAvailable: false,
+        source: latest.repository,
+        latest: latest,
+      }
     }
 
-    return latest
+    return {
+      updateAvailable: true,
+      source: latest.repository,
+      latest
+    }
   }
 
   async getReleases(){
