@@ -1,4 +1,3 @@
-import { EventEmitter } from 'events'
 import { IRemoteRepository } from './api/IRepository'
 import GithubRepo from './repositories/Github'
 import AzureRepo from './repositories/Azure'
@@ -6,9 +5,8 @@ import Cache from './repositories/Cache'
 import { IRelease, IReleaseExtended } from './api/IRelease'
 import fs from 'fs'
 import path from 'path'
-import semver from 'semver';
-import HotLoader from './HotLoader';
-import { BrowserWindow } from 'electron';
+import HotLoader from './HotLoader'
+import RepoBase from './api/RepoBase'
 
 interface IUpdaterOptions {
   repository: string;
@@ -20,11 +18,17 @@ interface IUpdaterOptions {
   filter?: Function
 }
 
-export default class AppManager extends EventEmitter{
+const SOURCES = {
+  CACHE: 'Cache',
+  HOTLOADER: 'HotLoader'
+}
+
+export default class AppManager extends RepoBase{
   
   remote: IRemoteRepository;
   cache: Cache;
-  checkHandler: any; // IntervalHandler
+  checkUpdateHandler: any; // IntervalHandler
+  private hotLoader: HotLoader;
   
   /**
    *
@@ -60,6 +64,8 @@ export default class AppManager extends EventEmitter{
       throw new Error('No repository strategy found for url: ' + repository)
     }
 
+    this.hotLoader = new HotLoader(this)
+
     if(cacheDir){
       this.cache = new Cache(cacheDir)
     } else {
@@ -86,8 +92,18 @@ export default class AppManager extends EventEmitter{
     return this.cache.cacheDirPath
   }
 
+  get hotLoadedApp() : IRelease | null {
+    if(this.hotLoader.currentApp === null) {
+      return null
+    }
+    let hotLoaded = this.hotLoader.currentApp
+    // this is important to determine the source of the latest release
+    hotLoaded.repository = SOURCES.HOTLOADER
+    return hotLoaded
+  }
+
   private startUpdateRoutine(intervalMs : number){
-    if (this.checkHandler) {
+    if (this.checkUpdateHandler) {
       throw new Error('Update routine was started multiple times')
     }
     let errorCounter = 0
@@ -107,22 +123,21 @@ export default class AppManager extends EventEmitter{
     }
 
     check()
-    this.checkHandler = setInterval(check, intervalMs)
+    this.checkUpdateHandler = setInterval(check, intervalMs)
   }
 
   async checkForUpdates() : Promise<IRelease | IReleaseExtended | null> {
-    const latestCached = await this.cache.getLatest()
-    const latestRemote = await this.remote.getLatest()
-    if(!latestCached){
-      return latestRemote // null || release
-    }
-    if(!latestRemote){
+    const latest = await this.getLatest()
+    if(latest === null){
       return null
     }
-    if(semver.gt(latestRemote.version, latestCached.version)){
-      return latestRemote
+
+    // latest release is not from remote -> no updates necessary
+    if(latest.repository === SOURCES.CACHE || latest.repository === SOURCES.HOTLOADER){
+      return null
     }
-    return null 
+
+    return latest
   }
 
   async getReleases(){
@@ -140,15 +155,19 @@ export default class AppManager extends EventEmitter{
   async getLatest() : Promise<IRelease | null>{
     const latestCached = await this.cache.getLatest()
     const latestRemote = await this.remote.getLatest()
+    const latestHotLoaded = this.hotLoadedApp
 
-    const versionCache = latestCached  ? latestCached.version : '0.0.0'
-    const versionRemote = latestRemote ? latestRemote.version : '0.0.0'
+    // remove null, undefined
+    let latestReleases = [latestCached, latestHotLoaded, latestRemote].filter(this.notEmpty)
 
-    if(semver.gt(versionCache, versionRemote)){
-      return latestCached
+    if(latestReleases.length <= 0) {
+      return null
     }
 
-    return latestRemote
+    latestReleases = latestReleases.sort(this.compareVersions)
+
+    // to determine from where the latest release comes use the repository tag on the release
+    return latestReleases[0]
   }
 
   async download(release : IRelease, {writePackageData = true, writeDetachedMetadata = true, targetDir = this.cache.cacheDirPath} = {} ){
@@ -188,18 +207,19 @@ export default class AppManager extends EventEmitter{
       location
     }
   }
-  async hotLoad(release : IRelease | undefined){
-    const hotLoader = new HotLoader(this)
+  async hotLoad(release : IRelease){
     // load app to memory and serve from there
-    const hotUrl = await hotLoader.load(release)
+    const hotUrl = await this.hotLoader.load(release)
     if(!hotUrl) return null
     return hotUrl
   }
   async hotLoadLatest() {
-    const hotLoader = new HotLoader(this)
-    const hotUrl = await hotLoader.load()
+    const hotUrl = await this.hotLoader.loadLatest()
     if(!hotUrl) return null
-    return hotUrl
+    return hotUrl 
+  }
+  async persistHotLoaded() {
+
   }
   async getEntries(release : IRelease){
     return this.cache.getEntries(release)

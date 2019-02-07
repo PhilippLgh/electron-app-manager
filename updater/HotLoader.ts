@@ -12,24 +12,37 @@ try {
 } catch (error) {
   console.log('error during require of electron modules', error)
 }
-
 export default class HotLoader {
   
   appManager: AppManager;
+
+  private _currentApp: IRelease | null = null;
 
   constructor(appManager : AppManager){
     this.appManager = appManager
   }
 
-  prepare(){
-
+  get currentApp() {
+    return this._currentApp
   }
 
-  showSplashscreen(){
+  set currentApp(app : IRelease | null) {
+    this._currentApp = app
+  }
+
+  showSplashscreen() {
     showSplash(this.appManager)
   }
 
-  async load(release? : IRelease | undefined) {
+  async loadLatest() {
+    return this._load()
+  }
+
+  async load(release : IRelease) {
+    return this._load(release)
+  }
+
+  async _load(release? : IRelease | undefined) {
 
     showSplash(this.appManager)
 
@@ -40,6 +53,8 @@ export default class HotLoader {
     if(!release){
       throw new Error('hot load failed: no release was provided or found')
     }
+
+    this.currentApp = release
 
     // console.log('hot load release', release)
     const result = await this.appManager.download(release, {writePackageData: false})
@@ -71,11 +86,7 @@ export default class HotLoader {
     return electronUrl
   }
   
-  // async hotLoad(indexHtml) {
-  //   if(showSplash == null){
-  //     throw new Error('Splash cannot be displayed - not running in Electron?')
-  //   }
-
+  // async getZipUrl(indexHtml) {
   //   /*
   //   let result = {}
   //   const { location } = app;
@@ -87,18 +98,6 @@ export default class HotLoader {
   //   }
   //   let remoteZip = new RemoteZip(zipUrl)
   //   addZip(remoteZip)
-  //   */
-
-  //   let electronUrl = url.format({
-  //     slashes: true,
-  //     protocol: 'file:', // even though not 100% correct we are using file and not a custom protocol for the moment
-  //     pathname: '.zip/index.html', // path does only exist in memory
-  //   })
-        
-  //   result.electronUrl = electronUrl
-    
-  //   return result
-
   // }
 
 }

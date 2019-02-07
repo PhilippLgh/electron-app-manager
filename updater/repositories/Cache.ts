@@ -87,6 +87,7 @@ class Cache extends RepoBase implements IRepository {
     if (filtered.length === 0) {
       return null;
     }
+    filtered[0].repository = 'Cache'
     return filtered[0]
   }
   async getEntries(release : IRelease){

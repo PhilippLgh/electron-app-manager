@@ -1,9 +1,10 @@
 {
   "name": "@philipplgh/electron-app-manager",
-  "version": "0.8.0",
+  "version": "0.8.4",
   "description": "",
   "main": "dist/index.js",
   "scripts": {
+    "prepare": "yarn build",
     "test": "mocha --require ts-node/register test/**/*.ts",
     "static-files": "copyfiles updater/electron/ui/splash.html updater/electron/ui/preload.js dist/",
     "build": "yarn static-files && tsc -p ./tsconfig.json"

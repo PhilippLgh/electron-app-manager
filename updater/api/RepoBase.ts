@@ -1,7 +1,8 @@
 import { IRelease, IInvalidRelease, IMetadata, IReleaseExtended } from './IRelease'
+import { EventEmitter } from 'events'
 const semver = require('semver')
 
-class RepoBase {
+class RepoBase extends EventEmitter{
 
   public compareVersions(a : IRelease | IInvalidRelease, b : IRelease | IInvalidRelease){
     if(!('version' in a)) return 1
@@ -16,6 +17,10 @@ class RepoBase {
 
   protected sortReleases(releases : Array<IRelease | IInvalidRelease>){
     return releases.sort(this.compareVersions)
+  }
+
+  protected notEmpty<IRelease>(value: IRelease | null | undefined): value is IRelease {
+    return value !== null && value !== undefined;
   }
 
 }
