@@ -13,7 +13,7 @@ Electron App Manager provides fast, secure, minimal and continuous updates + ver
 </h4>
 
 # Features
-- `asar`, `zip`, and `tar` support
+- `asar`, `zip`, and `tar` package support
 - Compatible wrapper for `electron-builder's` updater ([electron-updater]())
 - Splash screen generator and loading animation
 - Built-in support for packages hosted on: GitHub, AWS S3, Azure or Custom HTTP
@@ -23,7 +23,7 @@ Electron App Manager provides fast, secure, minimal and continuous updates + ver
 - Rollback to latest / selected / working version
 - Version chooser
 - Staged rollouts
-- Menu integration & Confirmation Dialogs
+- Menu integration & confirmation dialogs
 - [*Hot App Loading*](#hot-loading-experimental) from memory (no write to fs)
 - Minimal dependency footprint (for higher security)
 
@@ -118,7 +118,7 @@ TODO
 # Releases
 
 ```javascript
-export interface IRelease extends IReleaseBase {
+export interface IRelease {
   name: string;
   displayName: string;
   fileName: string;
