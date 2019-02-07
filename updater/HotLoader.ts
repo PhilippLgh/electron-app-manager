@@ -1,8 +1,10 @@
 import url from 'url'
-import { IRelease } from "./api/IRelease";
+import { IRelease, IReleaseExtended } from "./api/IRelease";
 import AppManager from "./AppManager";
 //@ts-ignore
 import AdmZip from 'adm-zip'
+
+import { md5 } from './lib/hashes'
 
 let addZip : any = null
 let showSplash : any = null
@@ -39,6 +41,7 @@ export default class HotLoader {
   }
 
   async load(release : IRelease) {
+
     return this._load(release)
   }
 
@@ -66,6 +69,11 @@ export default class HotLoader {
 
     // TODO make sanity check or throw
     // console.log('entries', zip.getEntries().length)
+
+    // FIXME throw exception if fingerprint cannot be retrieved: does only exist on IReleaseExtended
+    // @ts-ignore 
+    // let releaseFingerprint = release.checksums.sha1
+    let releaseFingerprint = md5(`${release.name} - ${release.tag}`)
     
     // allows renderer to access files within zip in memory
     /**
@@ -75,12 +83,12 @@ export default class HotLoader {
      * this will only allow to read from one zip which is probably intended
      * it will also completely deactivate fs access for files outside the zip which could be a good thing 
      */
-    addZip(zip)
+    addZip(zip, releaseFingerprint)
 
     const electronUrl = url.format({
       slashes: true,
       protocol: 'file:', // even though not 100% correct we are using file and not a custom protocol for the moment
-      pathname: '.zip/index.html', // path does only exist in memory
+      pathname: `hotloader/${releaseFingerprint}/index.html`, // path does only exist in memory
     })
 
     return electronUrl
