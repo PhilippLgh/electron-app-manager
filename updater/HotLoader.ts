@@ -6,11 +6,11 @@ import AdmZip from 'adm-zip'
 
 import { md5 } from './lib/hashes'
 
-let addZip : any = null
+const addZip = require('./lib/add-zip-support')
+
 let showSplash : any = null
 try {
-  showSplash = require('./electron//ui/show-splash').showSplash
-  addZip = require('./electron/electron-zip-support')  
+  showSplash = require('./electron/ui/show-splash').showSplash
 } catch (error) {
   console.log('error during require of electron modules', error)
 }
@@ -84,12 +84,11 @@ export default class HotLoader {
      * this will only allow to read from one zip which is probably intended
      * it will also completely deactivate fs access for files outside the zip which could be a good thing 
      */
-    addZip(zip, releaseFingerprint)
-
+    let protocol = addZip(zip, releaseFingerprint)
     const electronUrl = url.format({
       slashes: true,
-      protocol: 'file:', // even though not 100% correct we are using file and not a custom protocol for the moment
-      pathname: `hotloader/${releaseFingerprint}/index.html`, // path does only exist in memory
+      protocol,
+      pathname: `${releaseFingerprint}/index.html`, // path does only exist in memory
     })
 
     return electronUrl
