@@ -243,8 +243,11 @@ export default class AppManager extends RepoBase{
 
   }
 
-  async createMenuTemplate(onReload : Function){
+  async createMenuTemplate(onReload : Function) {
     return this.menuBuilder.createMenuTemplate(onReload)
+  }
+  async updateMenuVersion(version : string) {
+    return this.menuBuilder.updateMenuVersion(version)
   }
 
   async getEntries(release : IRelease){
