@@ -192,8 +192,8 @@ export default class AppPackage {
         reject(error)
       });
       stream.on('end', () => {
-        console.log( ((Date.now()-t0) / 1000) , ' finished processing')
-        console.log('end of stream', completed, '/',  size)
+        // console.log( ((Date.now()-t0) / 1000) , ' finished processing')
+        // console.log('end of stream', completed, '/',  size)
         // TODO make sure that buffer also contains bytes stream.end vs mStream.end
         resolve(mStream.buffer)
       })
