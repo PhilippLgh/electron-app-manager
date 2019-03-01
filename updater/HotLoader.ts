@@ -1,12 +1,9 @@
-import url from 'url'
 import { IRelease, IReleaseExtended } from "./api/IRelease";
 import AppManager from "./AppManager";
-//@ts-ignore
-import AdmZip from 'adm-zip'
 
-import { md5 } from './lib/hashes'
+const ethpkg = require('@philipplgh/ethpkg')
 
-const addZip = require('./lib/add-zip-support')
+import PackageLoader from './PackageLoader'
 
 let showSplash : any = null
 try {
@@ -66,32 +63,8 @@ export default class HotLoader {
     // @ts-ignore
     const { data } = result
 
-    let zip = new AdmZip(data)
-
-    // TODO make sanity check or throw
-    // console.log('entries', zip.getEntries().length)
-
-    // FIXME throw exception if fingerprint cannot be retrieved: does only exist on IReleaseExtended
-    // @ts-ignore 
-    // let releaseFingerprint = release.checksums.sha1
-    let releaseFingerprint = md5(`${release.name} - ${release.tag}`)
-    
     // allows renderer to access files within zip in memory
-    /**
-     * TODO things to consider:
-     * this is *magic* and magic is usually not a good thing
-     * it will overwrite other interceptors - it seems there can only be one which might be a bug
-     * this will only allow to read from one zip which is probably intended
-     * it will also completely deactivate fs access for files outside the zip which could be a good thing 
-     */
-    let protocol = addZip(zip, releaseFingerprint)
-    const electronUrl = url.format({
-      slashes: true,
-      protocol,
-      pathname: `${releaseFingerprint}/index.html`, // path does only exist in memory
-    })
-
-    return electronUrl
+    return PackageLoader.load(data)
   }
   
   // async getZipUrl(indexHtml) {

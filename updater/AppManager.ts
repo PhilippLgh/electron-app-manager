@@ -8,6 +8,7 @@ import path from 'path'
 import HotLoader from './HotLoader'
 import RepoBase from './api/RepoBase'
 import MenuBuilder from './electron/menu'
+import AppLoader from './PackageLoader';
 
 interface IUpdateInfo {
   updateAvailable : boolean,
@@ -228,7 +229,10 @@ export default class AppManager extends RepoBase{
       location
     }
   }
-  async hotLoad(release : IRelease){
+  async load(pkg : IRelease | Buffer | string) : Promise<string> {
+    return AppLoader.load(pkg)
+  }
+  async hotLoad(release : IRelease) {
     // load app to memory and serve from there
     const hotUrl = await this.hotLoader.load(release)
     if(!hotUrl) return null

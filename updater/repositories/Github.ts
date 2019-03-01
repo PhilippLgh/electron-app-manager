@@ -66,9 +66,11 @@ class Github extends RepoBase implements IRemoteRepository {
     const size = app.size
     const downloads = app.download_count
 
+    const name = releaseInfo.tag_name
+
     return {
-      name: releaseInfo.tag_name,
-      displayName: '',
+      name,
+      displayName: name,
       repository: this.repositoryUrl,
       fileName: app.name,
       commit: releaseInfo.target_commitish,
@@ -153,7 +155,7 @@ class Github extends RepoBase implements IRemoteRepository {
     }
   }
 
-  async getLatest() : Promise<IRelease | null>  {
+  async getLatest() : Promise<IRelease | IReleaseExtended | null>  {
     // the latest uploaded release ( /latest api route ) is not necessarily the latest version
     // might only be a patch fix for previous version
     let releases = await this.getReleases();
@@ -161,8 +163,9 @@ class Github extends RepoBase implements IRemoteRepository {
       return null
     }
     let temp = releases[0];
+    // is invalid release
     if(temp.error !== undefined){
-      return null;
+      return null
     }
     let latest = temp as IRelease;
     let release = await this.extendWithMetadata(latest)
