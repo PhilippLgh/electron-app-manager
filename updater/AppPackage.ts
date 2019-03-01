@@ -60,6 +60,7 @@ export default class AppPackage {
       throw new Error('package does not exist: ' + packagePath)
     }
     this.packagePath = packagePath
+    // TODO replace with ethpkg
     this.zip = this.isZip ? new AdmZip(this.packagePath) : null
   }
 
@@ -120,7 +121,7 @@ export default class AppPackage {
     }
   }
 
-  getMetadata(): any {
+  async getMetadata(): Promise<any> {
     if(this.hasEmbeddedMetadata()){
       return this.getEmbeddedMetadata()
     } else if(this.hasDetachedMetadata()){

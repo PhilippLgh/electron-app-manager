@@ -95,6 +95,10 @@ TODO
 
 `async download(release : IRelease, options: IDownloadOptions)`
 
+###  App Loading
+
+`async load(release : IRelease | Buffer | string) : Promise<string> `
+
 ###  Hot Loading
 
 `async hotLoad(release : IRelease)`
