@@ -8,6 +8,8 @@ import { verifyPGP, checksumMd5 } from '../tasks/verify'
 import AppPackage from '../AppPackage'
 import { getExtension, hasSupportedExtension } from '../util'
 
+import { ethpkg, pkgsign } from '@philipplgh/ethpkg'
+
 const SUPPORTED_EXTENSIONS = ['.zip', '.tar.gz', '.tar']
 
 // for different caching strategies see
@@ -24,7 +26,6 @@ class Cache extends RepoBase implements IRepository {
   }
 
   async toRelease(fileName : string){
-
     const name = path.parse(fileName).name
     const location = path.join(this.cacheDirPath, fileName)
 
@@ -45,9 +46,17 @@ class Cache extends RepoBase implements IRepository {
     } as any
 
     const appPackage = new AppPackage(release.location)
-    const metadata = appPackage.getMetadata()
+    const metadata = await appPackage.getMetadata()
 
-    if(metadata.signature){
+    if(!metadata){
+      console.log('package has no metadata', fileName)
+      return {
+        name,
+        error: 'No metadata: ' + fileName
+      }
+    }
+
+    if(metadata.signature) {
       //console.log('signature found', release.signature)
       //let result = await verifyPGP(binFileName, pubKeyBuildServer, metadata.signature)
       //console.log('is sig ok?', result)
@@ -71,10 +80,11 @@ class Cache extends RepoBase implements IRepository {
     if(!filesFound){
       return []
     }
-    let releases = files.map(async file => this.toRelease(file))
+
+    let releases = files.map(async (file : string) => this.toRelease(file))
     releases = await Promise.all(releases)
 
-    // releases = releases.filter(release => ('error' in release))
+    releases = releases.filter(release => !('error' in release))
 
     // @ts-ignore
     const sorted = releases.sort(this.compareVersions);
