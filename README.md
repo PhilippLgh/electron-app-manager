@@ -12,6 +12,8 @@
 Electron App Manager provides fast, secure, minimal and continuous updates + version and dependency management.
 </h4>
 
+![](./assets/app_manager_launch_demo_grid2.gif)
+
 # Features
 - `asar`, `zip`, and `tar` package support
 - Compatible wrapper for `electron-builder's` updater ([electron-updater]())
