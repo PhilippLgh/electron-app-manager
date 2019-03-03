@@ -20,7 +20,6 @@ class RepoBase extends EventEmitter{
     if(!('version' in b)) return -1
     const semComp = semver.compare(b.version, a.version)
     if(semComp === 0) {
-      console.log('sem', semComp, b.version, b.channel, a.version, a.channel)
       const channelA = REALEASE_CHANNEL[a.channel || '']
       const channelB = REALEASE_CHANNEL[b.channel || '']
       if(channelA === undefined) return 1
