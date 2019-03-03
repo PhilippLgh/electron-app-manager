@@ -23,8 +23,8 @@ class RepoBase extends EventEmitter{
       console.log('sem', semComp, b.version, b.channel, a.version, a.channel)
       const channelA = REALEASE_CHANNEL[a.channel || '']
       const channelB = REALEASE_CHANNEL[b.channel || '']
-      if(!channelA) return 1
-      if(!channelB) return -1
+      if(channelA === undefined) return 1
+      if(channelB === undefined) return -1
       if(channelA > channelB) return 1
       if(channelB > channelA) return -1
       return 0
