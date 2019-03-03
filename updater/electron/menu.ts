@@ -1,7 +1,18 @@
 import path from 'path'
 import { IRelease, IInvalidRelease } from "../api/IRelease"
-import { dialog, nativeImage, BrowserWindow, shell } from 'electron'
+import { dialog, nativeImage, BrowserWindow, shell, MenuItem } from 'electron'
 import AppManager from "../AppManager"
+
+const VALID_CHANNELS = [
+  'dev',
+  'ci',
+  'alpha',
+  'beta',
+  'nightly',
+  'production',
+  'master',
+  'release',
+]
 
 const showDialog = (title: string, message: string, buttonHandler : { [index:string] : any } = {} ) => {
   // TODO make sure this does not introduce memory leaks.. use weak map?
@@ -84,13 +95,31 @@ class MenuBuilder {
     const { limit } = options
     let releases = await this.appManager.getReleases()
     releases = releases.slice(0, Math.min(releases.length - 1, limit))
-  
+
+    // create it this way to get "stable" order
+    let channelMenu : {[index: string] : Object[] } = {
+      'release': [],
+      'production': [],
+      'master': [],
+      'nightly': [],
+      'alpha': [],
+      'beta': [],
+      'dev': [],
+      'ci': [],
+      'unknown': [],
+    }
+    
     // @ts-ignore
-    const switchVersionMenu = releases.map((release: IRelease) => {
-      return {
+    releases.forEach((release : IRelease) => {
+
+      let {version, channel} = release
+      if(!channel) {
+        channel = 'unknown'
+      }
+
+      const releaseItem = {
         label: release.tag,
         click: async () => {
-          let version = release.version
           let title = 'Switch Version'
           let message = `Do you want to load version ${version}?`
           showDialog(title, message, {
@@ -102,8 +131,32 @@ class MenuBuilder {
           })
         }
       }
+
+      channelMenu[channel].push(releaseItem)
+
+    });
+
+    let channels = Object.keys(channelMenu)
+
+    // remove channels without items
+    channels.forEach(channel => {
+      if(channelMenu[channel].length <= 0) {
+        delete channelMenu[channel]
+      }
     })
-    return switchVersionMenu
+
+    // if all items are lacking channel info don't create submenu
+    channels = Object.keys(channelMenu)
+    if(channels.length === 1 && channels[0] === 'unknown') {
+      return channelMenu['unknown']
+    } 
+
+    // convert channel struct to submenu
+    return channels.map(label => ({
+      label,
+      submenu: [...channelMenu[label]]
+    }))
+  
   }
 
   async createMenuTemplate(onReload: Function) {
