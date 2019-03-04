@@ -85,6 +85,8 @@ TODO
 
 `async checkForUpdates() : Promise<IUpdateInfo>`
 
+`async checkForUpdatesAndNotify() : Promise<IUpdateInfo>`
+
 ### Release Management
 
 `async getReleases() : Array<IRelease>`

@@ -8,7 +8,21 @@ import path from 'path'
 import HotLoader from './HotLoader'
 import RepoBase from './api/RepoBase'
 import MenuBuilder from './electron/menu'
-import AppLoader from './PackageLoader';
+import AppLoader from './PackageLoader'
+
+
+let showSplash : any = null
+let autoUpdater : any, CancellationToken : any = null
+let dialogs : any = null
+try {
+  let eu = require("electron-updater")
+  autoUpdater = eu.autoUpdater
+  CancellationToken = eu.CancellationToken
+  dialogs = require('./electron/Dialog').ElectronDialogs
+  showSplash = require('./electron/ui/show-splash').showSplash
+} catch (error) {
+  console.log('error during require of electron modules', error)
+}
 
 interface IUpdateInfo {
   updateAvailable : boolean,
@@ -19,6 +33,7 @@ interface IUpdateInfo {
 interface IUpdaterOptions {
   repository: string;
   auto?: boolean;
+  electron?: boolean,
   intervalMins?: number,
   cacheDir?: string;
   downloadDir?: string;
@@ -28,7 +43,8 @@ interface IUpdaterOptions {
 
 const SOURCES = {
   CACHE: 'Cache',
-  HOTLOADER: 'HotLoader'
+  HOTLOADER: 'HotLoader',
+  ELECTRON: 'Electron'
 }
 
 export default class AppManager extends RepoBase{
@@ -38,11 +54,12 @@ export default class AppManager extends RepoBase{
   checkUpdateHandler: any; // IntervalHandler
   private hotLoader: HotLoader;
   private menuBuilder: MenuBuilder;
+  private isElectron: boolean = false;
   
   /**
    *
    */
-  constructor({ repository, auto = true, intervalMins = 15, cacheDir, modifiers, filter } : IUpdaterOptions) {
+  constructor({ repository, auto = true, electron = false, intervalMins = 15, cacheDir, modifiers, filter } : IUpdaterOptions) {
     super();
 
     if(repository.startsWith('https://github.com/')) {
@@ -84,14 +101,46 @@ export default class AppManager extends RepoBase{
 
     this.checkForUpdates = this.checkForUpdates.bind(this)
 
+    // order important: needs to be set before auto update routine
+    if(electron){
+      this.isElectron = electron
+      this.setupAutoUpdater()
+    }
+
     if(auto){
       if (intervalMins <= 5 || intervalMins > (24 * 60)) {
         throw new Error(`Interval ${intervalMins} (min) is unreasonable or not within api limits`)
       }
-      let intervalMs = intervalMins * 60 * 1000
-      // FIXME this.startUpdateRoutine(intervalMs)
+      let intervalMs = 10* 1000 //intervalMins * 60 * 1000
+      this.startUpdateRoutine(intervalMs)
     }
 
+  }
+
+  private setupAutoUpdater () {
+    // silence autoUpdater -> we will use events and our logging instead
+    autoUpdater.logger = {
+      info: () => {},
+      warn: () => {},
+      error: () => {},
+    }
+    autoUpdater.on('checking-for-update', () => {
+      this.emit('checking-for-update')
+    })
+    autoUpdater.on('update-available', (info : any) => {
+      this.emit('update-available')
+    })
+    autoUpdater.on('update-not-available', (info : any) => {
+      this.emit('update-not-available')
+    })
+    autoUpdater.on('error', (err : Error) => {
+      this.emit('error', err)
+    })
+    autoUpdater.on('download-progress', (progressObj : any) => {
+    })
+    autoUpdater.on('update-downloaded', (info : any) => {
+      this.emit('update-downloaded')
+    })
   }
 
   get repository() : string {
@@ -119,6 +168,12 @@ export default class AppManager extends RepoBase{
     let errorCounter = 0
 
     const check = async () => {
+      console.log('checking for updates')
+
+
+      let result = await this.checkForUpdatesAndNotify()
+
+      /*
       let { latest } = await this.checkForUpdates()
       if (latest && latest.version) {
         console.log('update found: downloading ', latest.version);
@@ -130,13 +185,75 @@ export default class AppManager extends RepoBase{
           console.error(error)
         }
       }
+      */
     }
 
-    check()
-    this.checkUpdateHandler = setInterval(check, intervalMs)
+    // currently only implemented for electron updater: app updater uses hot loader
+    if(this.isElectron) {
+      check()
+      this.checkUpdateHandler = setInterval(check, intervalMs)
+    }
   }
 
   async checkForUpdates() : Promise<IUpdateInfo> {
+
+    if(this.isElectron) {
+      // doesn't work in dev mode without 'dev-app-update.yml': 
+      // https://github.com/electron-userland/electron-builder/issues/1505
+      try {
+        const updateCheckResult = await autoUpdater.checkForUpdates()
+        
+        // no updates available
+        if(!updateCheckResult) {
+          console.log('update not found')
+          return {
+            updateAvailable: false,
+            source: SOURCES.ELECTRON,
+            latest: null
+          } 
+        }
+
+        // https://www.electron.build/auto-update#updateinfo
+        let { updateInfo } = updateCheckResult
+        console.log('update found', updateInfo)
+        let {
+          version,
+          releaseName,
+          releaseNotes,
+          releaseDate,
+          stagingPercentage
+        } = updateInfo
+        return {
+          updateAvailable: true, // for the moment, this info is sufficient
+          source: SOURCES.ELECTRON,
+          // FIXME properly convert electron-builders updateInfo to IRelease
+          latest: {
+            name: releaseName,
+            displayName: releaseName,
+            version,
+            channel: 'production',
+            fileName: '',
+            commit: '',
+            size: 0,
+            publishedDate: releaseDate,
+            tag: '',
+            location: '',
+            repository: '',
+            error: undefined
+          } 
+        } 
+
+      } catch (error) {
+        console.log('electron-builder updater error' /*, error*/)
+      }
+
+      return {
+        updateAvailable: false,
+        source: SOURCES.ELECTRON,
+        latest: null
+      }
+    }
+
     const latest = await this.getLatest()
     if(latest === null){
       return {
@@ -159,6 +276,35 @@ export default class AppManager extends RepoBase{
       updateAvailable: true,
       source: latest.repository,
       latest
+    }
+  }
+
+  async checkForUpdatesAndNotify() {
+    if(this.isElectron) {
+      const {updateAvailable, latest} = await this.checkForUpdates()
+      if(updateAvailable && latest) {
+        if(dialogs) {
+          let {displayName, version} = latest
+          dialogs.displayUpdateFoundDialog(displayName, version, async (shouldInstall : boolean) => {
+            if(shouldInstall) {
+              // TODO check if we can use UpdateInfo instead
+              const cancellationToken = new CancellationToken()
+              try {
+                await autoUpdater.downloadUpdate(cancellationToken)
+              } catch (error) {
+                // TODO handle download errors                
+              }
+              try {
+                autoUpdater.quitAndInstall() 
+              } catch (error) {
+                // TODO handle restart errors                                
+              }
+            }
+          })
+        }
+      }
+    } else {
+      throw new Error('not implemented')
     }
   }
 
