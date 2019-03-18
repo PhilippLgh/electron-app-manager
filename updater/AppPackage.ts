@@ -3,12 +3,8 @@ import path from 'path'
 import zlib from 'zlib'
 
 import WritableMemoryStream from './lib/WritableMemoryStream'
-import IPackageEntry from './api/IPackageEntry'
 
-//@ts-ignore
-import AdmZip from 'adm-zip'
-//@ts-ignore
-import tar from 'tar-stream'
+import { ethpkg, IPackage, IPackageEntry } from '@philipplgh/ethpkg';
 
 
 const pubKeyBuildServer = `
@@ -51,8 +47,9 @@ r1SPANB30cTzENxbOwMnuvSopLq2jxmHYQSLVeQC9fbnov8W1ELBaKBrftn2MzgmWt/9DVpB
 
 export default class AppPackage {
 
-  private zip: any;
+  private pkg: IPackage | null = null;
   private packagePath: string;
+  initialized: boolean = false;
 
   constructor(packagePath : string){
     // TODO asar files might need special handling
@@ -60,8 +57,20 @@ export default class AppPackage {
       throw new Error('package does not exist: ' + packagePath)
     }
     this.packagePath = packagePath
-    // TODO replace with ethpkg
-    this.zip = this.isZip ? new AdmZip(this.packagePath) : null
+  }
+
+  async init() {
+    this.pkg = await ethpkg.getPackage(this.packagePath)
+    if(!this.pkg) {
+      throw new Error('package could not be initialized')
+    }
+    this.initialized = true
+    setTimeout(() => {
+      if(!this.initialized) {
+        throw new Error('package not initialized - forgot to call init() ?')
+      }
+    }, 500)
+    return this
   }
 
   get isTar(){
@@ -82,14 +91,14 @@ export default class AppPackage {
 
   hasEmbeddedMetadata(): any {
     // FIXME bad path /metadata.json -.> _META_ dir
-    return this.zip && this.zip.getEntry('metadata.json') !== null
+    return this.pkg && this.pkg.getEntry('metadata.json') !== null
   }
 
   hasDetachedMetadata(): any {
     return fs.existsSync(this.detachedMetadataPath)
   }
 
-  getEmbeddedMetadata(): any {
+  async getEmbeddedMetadata(): Promise<Object | null> {
 
     if(this.isAsar){
       const includedMetadataPath = path.join(this.packagePath, 'metadata.json')
@@ -106,13 +115,18 @@ export default class AppPackage {
     }
 
     try {
-      return JSON.parse(this.zip.getEntry('metadata.json').getData().toString())
+      let entry = await this.pkg!.getEntry('metadata.json')
+      if(!entry){
+        return null
+      }
+      let content = entry.file.readContent()
+      return JSON.parse(content.toString())
     } catch (error) {
       return null
     }
   }
 
-  getDetachedMetadata() : any {
+  async getDetachedMetadata() : Promise<Object | null> {
     try {
       return JSON.parse(fs.readFileSync(this.detachedMetadataPath, 'utf8'))
     } catch (error) {
@@ -132,122 +146,15 @@ export default class AppPackage {
   }
 
   async getEntries() : Promise<IPackageEntry[]>{
-    if(this.isZip){
-      // TODO write wrapper
-      return this.zip.getEntries()
-    }
-    else if(this.isTar){
-      const gzip = zlib.createGunzip()
-      const inputStream = fs.createReadStream(this.packagePath, {highWaterMark: Math.pow(2,16)})
-      const extract = tar.extract()
-      return new Promise((resolve, reject) => {
-        const entries : IPackageEntry[] = []
-        extract.on('entry', (header : any, stream : any, next : any) => {
-          let { name } = header
-          const { size, type} = header
-          const relPath = name as string
-          name = path.basename(relPath)
-          // console.log('process', relPath)
-          entries.push({
-            name,
-            relPath,
-            size,
-            type,
-            // TODO getDataStream()
-            getData: async () => {
-              let fileData = await this._getEntryData(relPath)
-              return fileData
-            }
-          })
-          
-          stream.on('end', function() {
-            next() // ready for next entry
-          })
-          stream.resume()
-          
-        })
-        extract.on('finish', () => {
-          resolve(entries)
-        })
-        inputStream.pipe(gzip).pipe(extract)
-      });
-    } else {
-      throw new Error('unsupported operation on package ' + this.packagePath)
-    }
-  }
-  private async readStreamToBuffer(stream : fs.ReadStream, size? : number){
-    return new Promise((resolve, reject) => {
-      let mStream = new WritableMemoryStream()
-      // let fStream = fs.createWriteStream(__dirname+'/test')
-      let t0 = Date.now()
-      stream.pipe(mStream)
-      // stream.pipe(fStream)
-      let completed = 0;
-      
-      stream.on('data', (data : any) => {
-        completed += data.length;
-        // console.log('data ', completed, '/', size)
-      })
-      
-      stream.on("error", (error : any) => {
-        reject(error)
-      });
-      stream.on('end', () => {
-        // console.log( ((Date.now()-t0) / 1000) , ' finished processing')
-        // console.log('end of stream', completed, '/',  size)
-        // TODO make sure that buffer also contains bytes stream.end vs mStream.end
-        resolve(mStream.buffer)
-      })
-    })
-  }
-  private async _getEntryData(entryPath : string){
-    if(this.isTar){
-      const gzip = zlib.createGunzip()
-      const inputStream = fs.createReadStream(this.packagePath)
-      const extract = tar.extract()
-      return new Promise((resolve, reject) => {
-        extract.on('entry', async (header : any, stream : any, next : any) => {
-          let { name } = header
-          const { size, type} = header
-          const relPath = name as string
-          name = path.basename(relPath)
-          if(relPath === entryPath){
-            let fileData = await this.readStreamToBuffer(stream, size)
-            resolve(fileData)
-            // TODO close here
-            next()
-          } else {
-            stream.on('end', function() {
-              next() // ready for next entry
-            })
-            stream.resume()
-          }
-        })
-        extract.on('finish', () => {
-          // resolve(entries)
-        })
-        inputStream.pipe(gzip).pipe(extract)
-      });
-    } else {
-      throw new Error('unsupported operation on package '+this.packagePath)
-    }
+    return this.pkg!.getEntries()
   }
   async getEntry(entryPath : string) : Promise<IPackageEntry | null>{
-    if(this.isZip){
-      // TODO
-      throw new Error('not implemented')
-    }
-    else if(this.isTar){
-      const entries = await this.getEntries()
-      const entry = entries.find(entry => entry.relPath === entryPath)
-      return entry ? entry : null
-    }
-    return null
+   return this.pkg!.getEntry(entryPath)
   }
   async extract(){
     let targetDir = path.basename(this.packagePath)
     if(this.isZip){
-      this.zip.extractAllTo(targetDir, /*overwrite*/false);
+      // FIXME this.zip.extractAllTo(targetDir, /*overwrite*/false);
     }
     else if(this.isTar){
       // this is using tar-fs not tar-stream
