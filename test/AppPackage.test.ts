@@ -1,5 +1,7 @@
 import { assert } from 'chai'
-import AppPackage from '../updater/AppPackage';
+import AppPackage from '../updater/AppPackage'
+
+const tarPath = __dirname + '/fixtures/TarCache/' + 'geth-darwin-amd64-1.8.22-7fa3509e.tar.gz'
 
 
 describe('AppPackage', () => {
@@ -10,8 +12,7 @@ describe('AppPackage', () => {
   describe('getEntries()', () => {
     
     it('returns all entries from the package', async () => {
-      let tarPath = __dirname + '/fixtures/TarCache/' + 'geth-darwin-amd64-1.8.22-unstable-24d66944.tar.gz'
-      let appPackage = new AppPackage(tarPath)
+      let appPackage = await new AppPackage(tarPath).init()
       let entries = await appPackage.getEntries()
       assert.isArray(entries)
       assert.equal(entries.length, 3)
@@ -19,13 +20,11 @@ describe('AppPackage', () => {
 
   })
 
-  describe('getEntry()', () => {
+  describe('getEntry()', async () => {
     
-    it('returns the entry header and buffer from the package', async function(){
-      this.timeout(20 * 1000)
-      let tarPath = __dirname + '/fixtures/TarCache/' + 'geth-darwin-amd64-1.8.22-unstable-24d66944.tar.gz'
-      let appPackage = new AppPackage(tarPath)
-      let entry = await appPackage.getEntry('geth-darwin-amd64-1.8.22-unstable-24d66944/geth')
+    it('returns the entry header and buffer from the package', async () => {
+      let appPackage = await new AppPackage(tarPath).init()
+      let entry = await appPackage.getEntry('geth-darwin-amd64-1.8.22-7fa3509e/geth')
       assert.isNotNull(entry)
     })
 
@@ -34,23 +33,21 @@ describe('AppPackage', () => {
   describe('entry.getData()', () => {
     
     it('returns the entry header and buffer from the package', async function(){
-      this.timeout(20 * 1000)
-      let tarPath = __dirname + '/fixtures/TarCache/' + 'geth-darwin-amd64-1.8.22-unstable-24d66944.tar.gz'
-      let appPackage = new AppPackage(tarPath)
-      let entry = await appPackage.getEntry('geth-darwin-amd64-1.8.22-unstable-24d66944/geth')
+      let appPackage = await new AppPackage(tarPath).init()
+      let entry = await appPackage.getEntry('geth-darwin-amd64-1.8.22-7fa3509e/geth')
       assert.isNotNull(entry)
       // @ts-ignore entry != null
-      let data = await entry.getData()
-      assert.equal(data.length, 31877024)
+      let data = await entry.file.readContent()
+      assert.equal(data.length, 14346)
     })
 
   })
 
   describe('extract()', () => {
 
-    it.skip("extracts the package content to the same director", async function() {
+    it.skip("extracts the package content to the same director", async () => {
       let packagePath = __dirname + '/fixtures/PackageCache/mist-ui-react_0.1.19b.zip'
-      let appPackage = new AppPackage(packagePath)
+      let appPackage = await new AppPackage(packagePath).init()
       appPackage.extract()
     });
 
