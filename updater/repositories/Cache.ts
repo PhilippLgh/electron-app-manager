@@ -45,7 +45,7 @@ class Cache extends RepoBase implements IRepository {
       location
     } as any
 
-    const appPackage = new AppPackage(release.location)
+    const appPackage = await new AppPackage(release.location).init()
     const metadata = await appPackage.getMetadata()
 
     if(!metadata){
@@ -101,15 +101,15 @@ class Cache extends RepoBase implements IRepository {
     return filtered[0]
   }
   async getEntries(release : IRelease){
-    const appPackage = new AppPackage(release.location)
+    const appPackage = await new AppPackage(release.location).init()
     return appPackage.getEntries()
   }
   async getEntry(release : IRelease, entryPath : string){
-    const appPackage = new AppPackage(release.location)
+    const appPackage = await new AppPackage(release.location).init()
     return appPackage.getEntry(entryPath)
   }
   async extract(release: IRelease): Promise<any> {
-    const appPackage = new AppPackage(release.location)
+    const appPackage = await new AppPackage(release.location).init()
     return appPackage.extract()
   }
 
