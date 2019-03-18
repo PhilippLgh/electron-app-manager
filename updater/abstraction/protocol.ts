@@ -1,3 +1,4 @@
+import IProtocol from "./IProtocol"
 
 const is = {
   electron: () => {

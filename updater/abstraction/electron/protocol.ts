@@ -1,4 +1,5 @@
 const url = require('url')
+import IProtocol from '../IProtocol'
 const { app, protocol } = require('electron')
 
 function getFilePath(request: any) {
@@ -10,6 +11,7 @@ function getFilePath(request: any) {
   }
   return filePath
 }
+
 
 class Protocol implements IProtocol {
   registerProtocolHandler(scheme: string, handler: Function) {

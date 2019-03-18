@@ -32,11 +32,14 @@ function registerProtocolHandler() : string {
   }
   protocol.registerProtocolHandler(scheme, async (fileUri : string, handler : any) => {
 
+    // console.log('load', fileUri)
     const filePath = fileUri
     const fp = filePath.replace((scheme + '://'), '')
     const parts = fp.split('/')
 
-    parts.shift() // remove leading /
+    if(parts.length > 0 && parts[0] === '/'){
+      parts.shift() // remove leading /
+    }
 
     if(parts.length < 2) {
       console.log('HOT-LOAD: no hotloader url found: fallback to fs', filePath)
@@ -58,6 +61,7 @@ function registerProtocolHandler() : string {
 function addZipSupport(pkg : IPackage, packageId : string) {
   // TODO add method to unload modules
   // register pkg
+  console.log('register module as', packageId)
   const releaseFingerprint = packageId //md5(`${release.name} - ${release.tag}`)
   registeredModules[releaseFingerprint] = pkg
 
