@@ -89,9 +89,10 @@ export default class AppPackage {
     return this.packagePath + '.metadata.json'
   }
 
-  hasEmbeddedMetadata(): any {
+  async hasEmbeddedMetadata(): Promise<any> {
     // FIXME bad path /metadata.json -.> _META_ dir
-    return this.pkg && this.pkg.getEntry('metadata.json') !== null
+    const includedMeta = this.pkg ? await this.pkg.getEntry('metadata.json') : null
+    return includedMeta !== null
   }
 
   hasDetachedMetadata(): any {
@@ -136,7 +137,7 @@ export default class AppPackage {
   }
 
   async getMetadata(): Promise<any> {
-    if(this.hasEmbeddedMetadata()){
+    if(await this.hasEmbeddedMetadata()){
       return this.getEmbeddedMetadata()
     } else if(this.hasDetachedMetadata()){
       return this.getDetachedMetadata()
