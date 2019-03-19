@@ -155,10 +155,14 @@ class Github extends RepoBase implements IRemoteRepository {
     }
   }
 
-  async getLatest() : Promise<IRelease | IReleaseExtended | null>  {
+  async getLatest(filter? : string) : Promise<IRelease | IReleaseExtended | null>  {
     // the latest uploaded release ( /latest api route ) is not necessarily the latest version
     // might only be a patch fix for previous version
-    let releases = await this.getReleases();
+    let releases = await this.getReleases()
+    if(filter && typeof filter === 'string') {
+      // @ts-ignore
+      releases = releases.filter(release => semver.satisfies(semver.coerce(release.version).version, filter))
+    }
     if (releases.length <= 0) {
       return null
     }

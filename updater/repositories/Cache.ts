@@ -91,7 +91,10 @@ class Cache extends RepoBase implements IRepository {
     return sorted as any // FIXME remove any
   }
   
-  async getLatest() : Promise<IRelease | IReleaseExtended | null>  {
+  async getLatest(filter? : string) : Promise<IRelease | IReleaseExtended | null>  {
+    if (filter) {
+      console.warn('filters are ignored for cache: ', filter)
+    }
     const releases = await this.getReleases() as Array<IRelease>
     const filtered = releases.filter(r => !('error' in r))
     if (filtered.length === 0) {

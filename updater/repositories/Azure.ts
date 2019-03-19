@@ -165,17 +165,21 @@ class Azure extends RepoBase implements IRemoteRepository {
     return sorted
   }
 
-  async getLatest(): Promise<IRelease | IReleaseExtended | null> {
-    const releases = await this.getReleases()
-    // @ts-ignore
-    const filtered = releases.filter(release => semver.lt(semver.coerce(release.version).version, '1.9.0'))
-    if (filtered.length <= 0) {
+  async getLatest(filter? : string): Promise<IRelease | IReleaseExtended | null> {
+    let releases = await this.getReleases()
+    if(filter && typeof filter === 'string') {
+      // @ts-ignore
+      releases = releases.filter(release => semver.satisfies(semver.coerce(release.version).version, filter))
+    }
+    if (releases.length <= 0) {
       return null
     }
-    const release = filtered[0] as any
-    if(release.signature){
-      let signatureData = await download(release.signature)
-      release.signature = signatureData.toString()
+    const release = releases[0] as any
+    if (release.signature){
+      const signatureData = await download(release.signature)
+      if (signatureData) {
+        release.signature = signatureData.toString()
+      }
     }
     return release
   }

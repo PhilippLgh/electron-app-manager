@@ -21,7 +21,7 @@ try {
   dialogs = require('./electron/Dialog').ElectronDialogs
   showSplash = require('./electron/ui/show-splash').showSplash
 } catch (error) {
-  console.log('error during require of electron modules', error)
+  console.log('error during require of electron modules' /*, error*/)
 }
 
 interface IUpdateInfo {
@@ -316,13 +316,13 @@ export default class AppManager extends RepoBase{
     return this.cache.getLatest()
   }
 
-  async getLatestRemote(){
-    return await this.remote.getLatest()
+  async getLatestRemote(filter? : string){
+    return await this.remote.getLatest(filter)
   }
 
-  async getLatest() : Promise<IRelease | null>{
-    const latestCached = await this.cache.getLatest()
-    const latestRemote = await this.remote.getLatest()
+  async getLatest(filter? : string) : Promise<IRelease | null>{
+    const latestCached = await this.cache.getLatest(filter)
+    const latestRemote = await this.remote.getLatest(filter)
     const latestHotLoaded = this.hotLoadedApp
 
     // remove null, undefined
