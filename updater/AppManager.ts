@@ -400,6 +400,9 @@ export default class AppManager extends RepoBase{
     return this.menuBuilder.updateMenuVersion(version)
   }
 
+  async getLocalPackage(release : IRelease) {
+    return this.cache.getPackage(release)
+  }
   async getEntries(release : IRelease){
     return this.cache.getEntries(release)
   }

@@ -103,6 +103,10 @@ class Cache extends RepoBase implements IRepository {
     filtered[0].repository = 'Cache'
     return filtered[0]
   }
+  async getPackage(release : IRelease) {
+    const appPackage = await new AppPackage(release.location).init()
+    return appPackage
+  }
   async getEntries(release : IRelease){
     const appPackage = await new AppPackage(release.location).init()
     return appPackage.getEntries()
