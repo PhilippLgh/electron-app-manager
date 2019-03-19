@@ -4,9 +4,9 @@ export interface IRepository {
 
   name : string;
   
-  getReleases(): Promise<Array<(IRelease | IInvalidRelease)>>;
+  getReleases(semverFilter? : string): Promise<Array<(IRelease | IInvalidRelease)>>;
 
-  getLatest(): Promise<IRelease | IReleaseExtended | null>;
+  getLatest(semverFilter? : string): Promise<IRelease | IReleaseExtended | null>;
 
 }
 
