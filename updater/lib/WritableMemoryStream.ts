@@ -9,7 +9,9 @@ export default class WMStrm extends stream.Writable {
     this.buffer = undefined
     this.data = []
     this.once('finish', () => {
-      this.buffer = Buffer.concat(this.data)
+      // it seems that if data ony contains one item concat takes significantly longer
+      // which uncovered a race condition of stream events
+      this.buffer = this.data.length === 1 ? this.data.pop() : Buffer.concat(this.data)
     })
   }
   // for 30 MB file this takes .3 sec

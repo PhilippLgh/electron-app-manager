@@ -39,7 +39,8 @@ export async function downloadStreamToBuffer(response : http.IncomingMessage, pr
     });
     //response.on("progress", progress);
     response.on("error", reject);
-    response.on("end", () => resolve(writable.buffer));
+    // race-condition: response.on("end", () => resolve(writable.buffer))
+    writable.on('finish', () => resolve(writable.buffer))
   });
 }
 
@@ -62,15 +63,16 @@ export async function download(_url : string, onProgress = (progress : number) =
     throw new Error('too many redirects: ' + redirectCount)
   }
   // test for and follow redirect (GitHub)
-  let result = await request("HEAD", _url);
-  let headers = result.headers;
+  const result = await request("HEAD", _url);
+  const headers = result.headers;
   if ((headers.status === "302 Found" || headers.status === '301 Moved Permanently') && headers.location) {
-    console.log('follow redirect for', _url)
+    // console.log('follow redirect for', _url)
     _url = headers.location
     return download(_url, onProgress, redirectCount++)
   }
-  let response = await request('GET', _url)
-  let buf = await downloadStreamToBuffer(response, onProgress)
+  const response = await request('GET', _url)
+  // console.log('received response', response.headers)
+  const buf = await downloadStreamToBuffer(response, onProgress)
   return buf
 }
 
