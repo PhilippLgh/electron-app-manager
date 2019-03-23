@@ -17,6 +17,7 @@ let dialogs : any = null
 try {
   let eu = require("electron-updater")
   autoUpdater = eu.autoUpdater
+  autoUpdater.allowDowngrade = false
   CancellationToken = eu.CancellationToken
   dialogs = require('./electron/Dialog').ElectronDialogs
   showSplash = require('./electron/ui/show-splash').showSplash
@@ -111,7 +112,7 @@ export default class AppManager extends RepoBase{
       if (intervalMins <= 5 || intervalMins > (24 * 60)) {
         throw new Error(`Interval ${intervalMins} (min) is unreasonable or not within api limits`)
       }
-      let intervalMs = 10* 1000 //intervalMins * 60 * 1000
+      let intervalMs = intervalMins * 60 * 1000
       this.startUpdateRoutine(intervalMs)
     }
 
@@ -204,7 +205,7 @@ export default class AppManager extends RepoBase{
         const updateCheckResult = await autoUpdater.checkForUpdates()
         
         // no updates available
-        if(!updateCheckResult) {
+        if(!updateCheckResult || !updateCheckResult.downloadPromise) {
           console.log('update not found')
           return {
             updateAvailable: false,
