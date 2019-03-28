@@ -3,6 +3,8 @@ import url from 'url'
 import { pkgsign } from '@philipplgh/ethpkg'
 
 import { md5 } from './lib/hashes'
+import { download } from "./lib/downloader";
+import { isUrl } from "./util";
 const addZip = require('./lib/add-zip-support')
 
 const isRelease = <IRelease>(value: any): value is IRelease => {
@@ -17,13 +19,25 @@ const isCached = <IRelease>(value: any): value is IRelease => {
 export default class AppLoader {
   static async load(app : IRelease | Buffer | string) : Promise<string> {
   
+    let releaseFingerprint = 'unknown'
     let pkg
-    if(Buffer.isBuffer(app) || typeof app === 'string') {
+    if(Buffer.isBuffer(app)) {
       pkg = await pkgsign.loadPackage(app)
+      releaseFingerprint = md5(app)
+    } 
+    else if (typeof app === 'string') {
+      if (isUrl(app)) {
+        const appBuf = await download(app)
+        pkg = await pkgsign.loadPackage(appBuf)
+      } else {
+        pkg = await pkgsign.loadPackage(app)
+      }
+      releaseFingerprint = md5(app)
     }
     else if(isRelease(app)) {
       // TODO if local
       pkg = await pkgsign.loadPackage(app.location)
+      releaseFingerprint = md5(`${app.name} - ${app.tag}`)
     }
     else {
       throw new Error('unsupported package format')
@@ -45,7 +59,7 @@ export default class AppLoader {
     // FIXME throw exception if fingerprint cannot be retrieved: does only exist on IReleaseExtended
     // @ts-ignore 
     // let releaseFingerprint = release.checksums.sha1
-    const releaseFingerprint = '12345' //FIXME md5(`${release.name} - ${release.tag}`)
+    console.log('serve hot-loaded app from', releaseFingerprint)
 
     /**
      * TODO things to consider:
