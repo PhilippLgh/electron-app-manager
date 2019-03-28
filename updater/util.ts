@@ -14,6 +14,7 @@ export function parseXml(xml : string){
 const semverMatcher = /\bv?(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)(?:-[\da-z-]+(?:\.[\da-z-]+)*)?(?:\+[\da-z-]+(?:\.[\da-z-]+)*)?\b/ig;
 // https://github.com/sindresorhus/semver-regex
 export function extractVersion(str : string){
+  semverMatcher.lastIndex = 0
   let result = semverMatcher.exec(str)
   return result && result.length > 0 ? result[0] : undefined
 }
