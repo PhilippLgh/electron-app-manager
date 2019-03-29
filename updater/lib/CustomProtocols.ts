@@ -13,6 +13,13 @@ const findWindowByTitle = (title : string) => {
   return window
 }
 
+const findWebContentsByTitle = (title : string) => {
+  const { webContents } = require('electron')
+  let _webContents = webContents.getAllWebContents()
+  const wc = _webContents.find(w => w.getTitle() === title)
+  return wc
+}
+
 // used for remote zip (experimental)
 async function getZipUrl(_url : string){
   let result = await request("HEAD", _url);
@@ -48,17 +55,13 @@ export const loadRemoteApp = async (repoUrl : string, windowTitle : string) => {
   // @ts-ignore
   const icon = latest.icon
 
-  // 3. get window that is showing the splash 
-  // the long running operation is done: now find the loading window
-  // and trigger a redirect
-  const window = findWindowByTitle(windowTitle)
-  if (!window) {
+  // 3. get webContents that is showing the splash 
+  const webContents = findWebContentsByTitle(windowTitle)
+  if (!webContents) {
     // FIXME close splash here and let user know
     console.log('hot-loader window not found')
     return
   }
-  
-  const webContents = window.webContents
 
   const app = {
     name: displayName || '<unknown>',
@@ -98,7 +101,7 @@ export const loadRemoteApp = async (repoUrl : string, windowTitle : string) => {
  const appUrl = await ModuleRegistry.add(pkg)
 
  // 6. now load packageData into memory and serve from there
- window.loadURL(appUrl)
+ webContents.loadURL(appUrl)
 
 }
 
