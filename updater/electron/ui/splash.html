@@ -5,7 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="X-UA-Compatible" content="ie=edge">
-  <title>Electron App Manager</title>
+  <title>$WINDOW.TITLE$</title>
   <style>
     html,
     body {
@@ -103,8 +103,7 @@
     }
   </script>
 
-  <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.0/css/all.css" integrity="sha384-lZN37f5QGtY3VHgisS14W3ExzMWZxybE1SJSEsQp9S+oqd12jhcu+A56Ebc1zFSJ"
-    crossorigin="anonymous">
+  <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.0/css/all.css" integrity="sha384-lZN37f5QGtY3VHgisS14W3ExzMWZxybE1SJSEsQp9S+oqd12jhcu+A56Ebc1zFSJ" crossorigin="anonymous">
 
 </head>
 
@@ -112,13 +111,17 @@
 
   <div id="container" class="container" style="-webkit-app-region: drag">
     <div id="overlay" class="overlay flash" style="-webkit-app-region: drag"></div>
-    <div class="controls" style="-webkit-app-region: drag">
+    <div class="controls" style="-webkit-app-region: drag; display: none">
       <span class="brand">Electron App Updater</span>
       <span id="close-btn" class="button">
         <i class="fas fa-times"></i>
       </span>
     </div>
   </div>
+
+  <script>
+    window.data = JSON.parse('$app.info$')
+  </script>
 
   <script>
 
@@ -169,7 +172,7 @@
       ctx.font = '900 90px "Font Awesome 5 Brands"';
       ctx.fillStyle = "#aaa"
       const m = ctx.measureText(text)
-      ctx.fillText(text, (cw / 2) - (m.width / 2), y + (m.width / 2))
+      ctx.fillText(text, (cw / 2) - (m.width / 2), (ch / 2) - (m.width / 2))
     }
 
     const displayTitle = text => writeText(text, 70, 28)
@@ -286,12 +289,14 @@
     let progress = 0
     window.addEventListener('update', async function (e) {
       const data = e.detail
-      const app = data.app
+      const { app, progress } = data
 
-      if (app.icon && !imageLoading) {
+      const { icon } = app
+
+      if (icon && !imageLoading) {
         imageLoading = true
-        // console.log('app.icon', app.icon)
-        img = await getImage(app.icon)
+        // console.log('icon', icon)
+        img = await getImage(icon)
         console.log('loading image finished at ', progress)
         app.img = img
         displayProgress(app, progress)
@@ -299,7 +304,6 @@
       }
 
       app.img = img
-      progress = data.progress
       // console.log('on progress', progress, data)
       if (app) {
         displayProgress(app, progress)

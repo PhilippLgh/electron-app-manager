@@ -1,14 +1,13 @@
 import { IRemoteRepository } from './api/IRepository'
-import GithubRepo from './repositories/Github'
-import AzureRepo from './repositories/Azure'
 import Cache from './repositories/Cache'
 import { IRelease, IReleaseExtended } from './api/IRelease'
 import fs from 'fs'
 import path from 'path'
-import HotLoader from './HotLoader'
 import RepoBase from './api/RepoBase'
 import MenuBuilder from './electron/menu'
-import AppLoader from './PackageLoader'
+import { getRepository } from './repositories'
+import ModuleRegistry from './ModuleRegistry';
+import { getEthpkg } from './util';
 
 
 let showSplash : any = null
@@ -53,7 +52,6 @@ export default class AppManager extends RepoBase{
   remote: IRemoteRepository;
   cache: Cache;
   checkUpdateHandler: any; // IntervalHandler
-  private hotLoader: HotLoader;
   private menuBuilder: MenuBuilder;
   private isElectron: boolean = false;
   
@@ -63,35 +61,8 @@ export default class AppManager extends RepoBase{
   constructor({ repository, auto = true, electron = false, intervalMins = 15, cacheDir, modifiers, filter } : IUpdaterOptions) {
     super();
 
-    if(repository.startsWith('https://github.com/')) {
-      this.remote = new GithubRepo(repository)
-    }
-    else if(repository.includes('blob.core.windows.net')){
+    this.remote = getRepository(repository, modifiers, filter)
 
-      // FIXME check that only host name provided or parse
-      repository += '/builds?restype=container&comp=list'
-
-      if(modifiers){
-        let mod = (release : IRelease) => {
-          let result : {[key:string] : any} = { }
-          for(var m in modifiers){
-            result[m] = modifiers[m](release)
-          }
-          return result
-        }
-        this.remote = new AzureRepo(repository, {
-          onReleaseParsed: mod,
-          filter
-        })      
-      } else {
-        this.remote = new AzureRepo(repository)
-      }
-    }
-    else {
-      throw new Error('No repository strategy found for url: ' + repository)
-    }
-
-    this.hotLoader = new HotLoader(this)
     this.menuBuilder = new MenuBuilder(this)
 
     if(cacheDir){
@@ -153,6 +124,8 @@ export default class AppManager extends RepoBase{
   }
 
   get hotLoadedApp() : IRelease | null {
+    return null // FIXME
+    /*
     if(this.hotLoader.currentApp === null) {
       return null
     }
@@ -160,6 +133,7 @@ export default class AppManager extends RepoBase{
     // this is important to determine the source of the latest release
     hotLoaded.repository = SOURCES.HOTLOADER
     return hotLoaded
+    */
   }
 
   private startUpdateRoutine(intervalMs : number){
@@ -376,22 +350,10 @@ export default class AppManager extends RepoBase{
       location
     }
   }
-  async load(pkg : IRelease | Buffer | string) : Promise<string> {
-    return AppLoader.load(pkg)
-  }
-  async hotLoad(release : IRelease) {
-    // load app to memory and serve from there
-    const hotUrl = await this.hotLoader.load(release)
-    if(!hotUrl) return null
-    return hotUrl
-  }
-  async hotLoadLatest() {
-    const hotUrl = await this.hotLoader.loadLatest()
-    if(!hotUrl) return null
-    return hotUrl 
-  }
-  async persistHotLoaded() {
-
+  async load(pkgLocation : IRelease | Buffer | string) : Promise<string> {
+    const pkg = await getEthpkg(pkgLocation)
+    let appUrl = await ModuleRegistry.add(pkg)
+    return appUrl
   }
 
   async createMenuTemplate(onReload : Function) {

@@ -4,11 +4,26 @@ const { app, protocol } = require('electron')
 
 function getFilePath(request: any) {
   const uri = url.parse(request.url)
-  let filePath = decodeURIComponent(uri.pathname)
-  // pathname has a leading '/' on Win32 for some reason
-  if (process.platform === 'win32') {
+
+  // TODO uri.pathname would be the preferred way
+  // but caused issues when the protocol scheme was set as standard
+  // let filePath = decodeURIComponent(uri.pathname)
+  let filePath = request.url.replace(uri.protocol, '')
+  while(filePath && filePath.startsWith('/')) {
     filePath = filePath.slice(1)
   }
+  let qParamsIndex = filePath.indexOf('?')
+  if(qParamsIndex > -1) {
+    filePath = filePath.substring(0, qParamsIndex)
+  }
+
+
+  // pathname has a leading '/' on Win32 for some reason
+  /*
+  if (filePath && process.platform === 'win32') {
+    filePath = filePath.startsWith('/') ? filePath.slice(1) : filePath
+  }
+  */
   return filePath
 }
 
@@ -35,6 +50,7 @@ class Protocol implements IProtocol {
     } else (
       app.once('ready', init)
     )
+
   }
 }
 

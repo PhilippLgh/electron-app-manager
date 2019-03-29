@@ -67,8 +67,8 @@ class MenuBuilder {
             }
             await showDialog('Update Found', `Update Found:\n\n${latest.name} - ${latest.version}\n\n${latest.location}\n\n`, {
               'update': async () => {
-                const appUrl = await this.appManager.hotLoad(latest)
-                onReload(appUrl)
+                // FIXME const appUrl = await this.appManager.hotLoad(latest)
+                // onReload(appUrl)
               },
               'cancel': () => {
                 // do nothing
@@ -124,8 +124,8 @@ class MenuBuilder {
           let message = `Do you want to load version ${version}?`
           showDialog(title, message, {
             'ok': async () => {
-              let appUrl = await this.appManager.hotLoad(release)
-              onReload(appUrl)
+              // FIXME let appUrl = await this.appManager.hotLoad(release)
+              // FIXME onReload(appUrl)
             },
             'cancel': () => { },
           })
@@ -175,8 +175,8 @@ class MenuBuilder {
         {
           label: 'HotLoad Latest',
           click: async () => {
-            const hotUrl = await this.appManager.hotLoadLatest()
-            onReload(hotUrl)
+            // FIXME const hotUrl = await this.appManager.hotLoadLatest()
+            // FIXME onReload(hotUrl)
           }
         },
         { type: 'separator' },
