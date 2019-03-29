@@ -5,6 +5,7 @@ import RepoBase from '../api/RepoBase'
 import { download, downloadJson } from '../lib/downloader'
 import semver from 'semver'
 import GitHub, { ReposListReleasesResponseItem } from '@octokit/rest'
+import path from 'path'
 
 class Github extends RepoBase implements IRemoteRepository {
   
@@ -33,13 +34,20 @@ class Github extends RepoBase implements IRemoteRepository {
 
   private toRelease(releaseInfo : ReposListReleasesResponseItem) : (IRelease | IInvalidRelease) {
 
-    const segments = releaseInfo.tag_name.split('_')
+    const { 
+      name : releaseName,
+      tag_name,
+      target_commitish : branch
+     } = releaseInfo
+
+
+    const segments = tag_name.split('_')
     const versionTag = segments[0]
     const version = this.normalizeTag(versionTag);
 
     if(!semver.valid(version)) {
       return {
-        name: releaseInfo.tag_name,
+        name: tag_name,
         error: 'parse error / invalid version: ' + versionTag 
       }
     }
@@ -50,35 +58,37 @@ class Github extends RepoBase implements IRemoteRepository {
     // let metadata = releaseInfo.assets.find(release => release.name === 'metadata.json')
     if(!releaseInfo.assets){
       return {
-        name: releaseInfo.tag_name,
+        name: tag_name,
         error: 'release does not contain any assets'
       }
     }
     let app = releaseInfo.assets.find(release => release.name.endsWith('.asar') || release.name.endsWith('.zip'))
     if(!app){
       return {
-        name: releaseInfo.tag_name,
+        name: tag_name,
         error: 'release does not contain an app package (.asar or .zip)'
       }
     }
 
+    const appName = app.name && path.basename(app.name)
     const assetUrlApp = app.browser_download_url
     const size = app.size
     const downloads = app.download_count
+    const name = appName || releaseName || tag_name
 
-    const name = releaseInfo.tag_name
+    // console.log('release info asset: ', app)
 
     return {
       name,
       displayName: name,
       repository: this.repositoryUrl,
       fileName: app.name,
-      commit: releaseInfo.target_commitish,
+      commit: branch,
       publishedDate: new Date(),
       version,
       channel,
       size,
-      tag: releaseInfo.tag_name,
+      tag: tag_name,
       location: assetUrlApp,
       error: undefined
     }
@@ -87,6 +97,9 @@ class Github extends RepoBase implements IRemoteRepository {
   async getMetadata(release : IRelease) : Promise<IMetadata | null> {
     try {
       const meta = await downloadJson(`https://github.com/${this.owner}/${this.repo}/releases/download/${release.tag}/metadata.json`)
+      if (meta.error) {
+        return null
+      }
       const {name, icon, md5, sha1, sha256, sha512} = meta
       return {
         name,
@@ -107,7 +120,8 @@ class Github extends RepoBase implements IRemoteRepository {
     if (!meta) {
       return {
         ...release,
-        error: 'no meta data'
+        // TODO this should not invalidate releases? 
+        // error: 'no meta data'
       }
     }
     // return *full release* info
