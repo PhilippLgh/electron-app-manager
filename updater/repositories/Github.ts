@@ -19,7 +19,10 @@ class Github extends RepoBase implements IRemoteRepository {
   constructor(repoUrl : string){
     super()
     // WARNING: For unauthenticated requests, the rate limit allows for up to 60 requests per hour.
-    this.client = new GitHub();
+    this.client = new GitHub()
+    if (process.env.GITHUB_TOKEN && typeof process.env.GITHUB_TOKEN === 'string') {
+      this.client.authenticate({type: 'token', token: process.env.GITHUB_TOKEN})
+    }
 
     this._repositoryUrl = repoUrl;
     let parts = repoUrl.split('/')
@@ -158,13 +161,13 @@ class Github extends RepoBase implements IRemoteRepository {
         owner: this.owner,
         repo: this.repo
       });
-      
+
       // convert to proper format
       let releases = releaseInfo.data.map(this.toRelease.bind(this))
 
       return this.sortReleases(releases);
     } catch (error) {
-      
+      // FIXME handle API errors such as rate-limits
       return []
     }
   }
@@ -175,7 +178,7 @@ class Github extends RepoBase implements IRemoteRepository {
     let releases = await this.getReleases()
     if(filter && typeof filter === 'string') {
       // @ts-ignore
-      releases = releases.filter(release => semver.satisfies(semver.coerce(release.version).version, filter))
+      releases = releases.filter(release => semver.satisfies(release.version, filter))
     }
     if (releases.length <= 0) {
       return null
