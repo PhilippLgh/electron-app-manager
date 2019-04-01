@@ -10,7 +10,6 @@ import ModuleRegistry from './ModuleRegistry';
 import { getEthpkg } from './util';
 
 
-let showSplash : any = null
 let autoUpdater : any, CancellationToken : any = null
 let dialogs : any = null
 try {
@@ -19,9 +18,8 @@ try {
   autoUpdater.allowDowngrade = false
   CancellationToken = eu.CancellationToken
   dialogs = require('./electron/Dialog').ElectronDialogs
-  showSplash = require('./electron/ui/show-splash').showSplash
 } catch (error) {
-  console.log('error during require of electron modules' /*, error*/)
+  console.log('error during require of electron modules', error && error.message /*, error*/)
 }
 
 interface IUpdateInfo {
@@ -350,10 +348,21 @@ export default class AppManager extends RepoBase{
       location
     }
   }
+  
   async load(pkgLocation : IRelease | Buffer | string) : Promise<string> {
     const pkg = await getEthpkg(pkgLocation)
-    let appUrl = await ModuleRegistry.add(pkg)
+    let appUrl = await ModuleRegistry.add({
+      pkg
+    })
     return appUrl
+  }
+
+  static on(channel : string, cb : (...args: any[]) => void) : any {
+    if (channel === 'menu-available') {
+      ModuleRegistry.on('menu-available', cb)
+    } else {
+      throw new Error('unsupported event type: '+channel)
+    }
   }
 
   async createMenuTemplate(onReload : Function) {
