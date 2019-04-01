@@ -12,10 +12,13 @@ function getFilePath(request: any) {
   while(filePath && filePath.startsWith('/')) {
     filePath = filePath.slice(1)
   }
+
+  /*
   let qParamsIndex = filePath.indexOf('?')
   if(qParamsIndex > -1) {
     filePath = filePath.substring(0, qParamsIndex)
   }
+  */
 
 
   // pathname has a leading '/' on Win32 for some reason
