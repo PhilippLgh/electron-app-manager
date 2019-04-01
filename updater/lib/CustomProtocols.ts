@@ -1,9 +1,11 @@
 import fs from 'fs'
+import url from 'url'
 import { getRepository } from '../repositories'
 import { request } from '../lib/downloader'
 import { pkgsign } from '@philipplgh/ethpkg'
 import protocol from '../abstraction/protocol'
 import ModuleRegistry from '../ModuleRegistry';
+import { createSwitchVersionMenu, createCheckUpdateMenu, createMenu } from '../electron/menu';
 
 
 const findWindowByTitle = (title : string) => {
@@ -30,36 +32,44 @@ async function getZipUrl(_url : string){
   return _url
 }
 
-export const loadRemoteApp = async (repoUrl : string, windowTitle : string) => {
+export const loadRemoteApp = async (repoUrl : string, queryArgs : any,  windowTitle : string) => {
+
+  // 0. parse and remove query args as options
+  let targetVersion = (queryArgs && queryArgs.version) || 'latest'
 
   // 1. get repo for url
-  let repo = getRepository(repoUrl)
+  const repo = getRepository(repoUrl)
 
-  // 2. try to find latest version
-  const latest = await repo.getLatest()
+  // 2. try to find specified version or latest
+  let release = null
+  if (targetVersion === 'latest') {
+    release = await repo.getLatest()
+  } else {
+    release = await repo.getLatest(`=${targetVersion}`)
+  }
 
-  if (!latest) {
+  if (!release) {
     // FIXME close splash here and let user know
-    console.log('no latest version')
+    console.log(`release for version ${targetVersion} not found`)
     return // avoid ts issue
   } else {
-    // console.log('atest version found', latest)
+    // console.log('latest version found', latest)
   }
 
   const {
     displayName,
     size,
     version,
-  } = latest
+  } = release
 
   // @ts-ignore
-  const icon = latest.icon
+  const icon = release.icon
 
   // 3. get webContents that is showing the splash 
   const webContents = findWebContentsByTitle(windowTitle)
   if (!webContents) {
     // FIXME close splash here and let user know
-    console.log('hot-loader window not found')
+    console.log('hot-loader web contents not found')
     return
   }
 
@@ -71,9 +81,9 @@ export const loadRemoteApp = async (repoUrl : string, windowTitle : string) => {
     icon
   }
 
- // 4. download latest version & update window
- let pp = 0
- const packageData = await repo.download(latest, (progress : number) => {
+  // 4. download specified version & update window
+  let pp = 0
+  const packageData = await repo.download(release, (progress : number) => {
   let pn = Math.floor(progress * 100);
   if (pn > pp) {
     pp = pn
@@ -90,19 +100,29 @@ export const loadRemoteApp = async (repoUrl : string, windowTitle : string) => {
       }
     `)
   }
- })
+  })
 
- // TODO implement caching strategy here
+  // TODO implement caching strategy here
 
- // turn buffer into ethpkg
- const pkg = await pkgsign.loadPackage(packageData)
+  // turn buffer into ethpkg
+  const pkg = await pkgsign.loadPackage(packageData)
 
- // 5. register module as hot-loaded module
- const appUrl = await ModuleRegistry.add(pkg)
+  // 5. register module as hot-loaded module
+  const appUrl = await ModuleRegistry.add({
+    pkg,
+    repo
+  })
 
- // 6. now load packageData into memory and serve from there
- webContents.loadURL(appUrl)
+  // 6. now load packageData into memory and serve from there
+  webContents.loadURL(appUrl)
 
+  const switchVersion = (userVersion : string) => {
+    console.log('switch version to', userVersion)
+    const newUrl = `package://${repoUrl.replace('https://', '')}?version=${userVersion}`
+    webContents.loadURL(newUrl)
+  }
+  const m = await createMenu(displayName, version, repo, switchVersion)
+  ModuleRegistry.emit('menu-available', m)
 }
 
 
@@ -110,7 +130,7 @@ export const loadRemoteApp = async (repoUrl : string, windowTitle : string) => {
 
 const scheme = 'package'
 
-const prepareUninitialized = (repoUrl : string, handler : any) => {
+const prepareUninitialized = (repoUrl : string, queryArgs : any, handler : any) => {
   let template = fs.readFileSync(__dirname+'/../electron/ui/splash.html', 'utf8')
 
   // hack: id is used for window detection to get a mapping from app to window
@@ -126,25 +146,35 @@ const prepareUninitialized = (repoUrl : string, handler : any) => {
 
   // TODO append unique identifier to window for multi-window scenarios
 
-  loadRemoteApp(repoUrl, windowTitle)
+  loadRemoteApp(repoUrl, queryArgs, windowTitle)
 
   return result
 }
 
 const hotLoadProtocolHandler = async (fileUri : string, handler : any) => {
 
+  // console.log('handle request', fileUri)
+  
+  // extract query params
+  let url_parts = url.parse(fileUri, true)
+  let query = url_parts.query
+  // remove query args
+  let qParamsIndex = fileUri.indexOf('?')
+  if(qParamsIndex > -1) {
+    fileUri = fileUri.substring(0, qParamsIndex)
+  }
+
+  if (fileUri.includes('github')) {
+    // replace custom protocol
+    const repoUrl = `https://${fileUri}`
+    return prepareUninitialized(repoUrl, query, handler)
+  }
+
   // console.log('load', fileUri)
   const filePath = fileUri
-  const fp = filePath.replace((scheme + '://'), '')
-  const parts = fp.split('/')
+  const parts = fileUri.split('/')
 
   // console.log('HOT-LOAD: received request', fileUri)
-
-  if (filePath.includes('github')) {
-    // temp. swap the protocol
-    const repoUrl = `https://${fp}`
-    return prepareUninitialized(repoUrl, handler)
-  }
 
   if (parts.length > 0 && parts[0] === '/'){
     parts.shift() // remove leading /
@@ -163,7 +193,7 @@ const hotLoadProtocolHandler = async (fileUri : string, handler : any) => {
   if (!ModuleRegistry.has(moduleId)) {
     throw new Error('HOT-LOAD: requested content cannot be served: module not found / loaded')
   }
-  const pkg = ModuleRegistry.get(moduleId)
+  const pkg = ModuleRegistry.getPackage(moduleId)
   const entry = await pkg.getEntry(relFilePath)
   if (entry) {
     const content = await entry.file.readContent()
