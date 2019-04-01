@@ -1,0 +1,9 @@
+test/
+updater/
+assets/
+docs/
+.circleci/
+_*
+remoteZip.js
+
+.env
