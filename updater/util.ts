@@ -2,10 +2,12 @@ import path from 'path'
 // @ts-ignore
 import {parseString} from 'xml2js'
 
-import { IRelease } from "./api/IRelease"
+import { IRelease, IInvalidRelease } from "./api/IRelease"
 import { pkgsign } from '@philipplgh/ethpkg'
 
 import { download } from "./lib/downloader"
+
+import semver from 'semver'
 
 export function parseXml(xml : string){
   return new Promise((resolve, reject) => {
@@ -22,6 +24,37 @@ export function extractVersion(str : string){
   semverMatcher.lastIndex = 0
   let result = semverMatcher.exec(str)
   return result && result.length > 0 ? result[0] : undefined
+}
+
+const REALEASE_CHANNEL : {[index:string] : number} = {
+  dev: -1,
+  ci: -1,
+  alpha: 0,
+  beta: 1,
+  nightly: 2,
+  production: 3,
+  master: 4,
+  release: 4,
+}
+export const compareVersions = (a : IRelease | IInvalidRelease | {version?:string, channel?: string}, b : IRelease | IInvalidRelease | {version?:string, channel?: string}) => {
+  if(!('version' in a) || !a.version) return -1
+  if(!('version' in b) || !b.version) return 1
+  // don't let semver apply its "channel logic": 
+  // coerce to apply custom channel logic on same versions (same before "-channel")
+  let av = semver.coerce(a.version)
+  let bv = semver.coerce(b.version)
+  // @ts-ignore
+  const semComp = semver.compare(bv, av)
+  if(semComp === 0) {
+    const channelA = REALEASE_CHANNEL[a.channel || '']
+    const channelB = REALEASE_CHANNEL[b.channel || '']
+    if(channelA === undefined) return -1
+    if(channelB === undefined) return 1
+    if(channelA > channelB) return -1
+    if(channelB > channelA) return 1
+    return 0
+  }
+  return semComp
 }
 
 export function isUrl(str : string) {

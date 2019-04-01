@@ -1,34 +1,13 @@
 import { IRelease, IInvalidRelease, IMetadata, IReleaseExtended } from './IRelease'
 import { EventEmitter } from 'events'
+import { compareVersions } from '../util';
 const semver = require('semver')
 
-const REALEASE_CHANNEL : {[index:string] : number} = {
-  dev: -1,
-  ci: -1,
-  alpha: 0,
-  beta: 1,
-  nightly: 2,
-  production: 3,
-  master: 4,
-  release: 4,
-}
 
 class RepoBase extends EventEmitter{
 
   public compareVersions(a : IRelease | IInvalidRelease, b : IRelease | IInvalidRelease){
-    if(!('version' in a)) return 1
-    if(!('version' in b)) return -1
-    const semComp = semver.compare(b.version, a.version)
-    if(semComp === 0) {
-      const channelA = REALEASE_CHANNEL[a.channel || '']
-      const channelB = REALEASE_CHANNEL[b.channel || '']
-      if(channelA === undefined) return 1
-      if(channelB === undefined) return -1
-      if(channelA > channelB) return 1
-      if(channelB > channelA) return -1
-      return 0
-    }
-    return semComp
+    return compareVersions(a, b)
   }
 
   protected normalizeTag(tag : string){
