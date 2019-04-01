@@ -3,7 +3,7 @@ import { registerHotLoadProtocol } from './updater/lib/CustomProtocols';
 export {default as AppManager} from './updater/AppManager'
 
 export const registerPackageProtocol = () => {
-  const { protocol } = require('electron')
+  const { protocol, app } = require('electron')
   /**
    // https://github.com/electron/electron/blob/master/docs/api/protocol.md 
     By default web storage apis (localStorage, sessionStorage, webSQL, indexedDB, cookies) are disabled
@@ -12,6 +12,13 @@ export const registerPackageProtocol = () => {
     you have to register it as a standard scheme.
     -> needs to be registered before app.onReady
   */
-  protocol.registerStandardSchemes(['package'], { secure: true })
+  if (protocol.registerStandardSchemes && typeof protocol.registerStandardSchemes === 'function') {
+    protocol.registerStandardSchemes(['package'], { secure: true })
+  } else {
+    // @ts-ignore
+    protocol.registerSchemesAsPrivileged([
+      { scheme: 'package', privileges: { standard: true, secure: true } }
+    ])
+  }
   registerHotLoadProtocol()
 }
