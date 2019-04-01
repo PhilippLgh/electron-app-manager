@@ -2,6 +2,8 @@ import path from 'path'
 import { IRelease, IInvalidRelease } from "../api/IRelease"
 import { dialog, nativeImage, BrowserWindow, shell, MenuItem } from 'electron'
 import AppManager from "../AppManager"
+import { IRepository } from '../api/IRepository'
+import semver from 'semver'
 
 const VALID_CHANNELS = [
   'dev',
@@ -25,8 +27,11 @@ const showDialog = (title: string, message: string, buttonHandler : { [index:str
       // icon: nativeImage.createFromBuffer(fs.readFileSync(path.join(__dirname, 'logo-placeholder.png')))
     }, async response => {
       const button = buttons[response]
+      console.log('response was', response, button)
       try {
         if(typeof buttonHandler[button] === 'function'){
+          console.log('button handler found and called');
+
           (buttonHandler[button])()
         }
       } catch (error) {
@@ -45,6 +50,151 @@ const SOURCES = {
 
 const isRemoteSource = (source : string) => source && source !== SOURCES.CACHE && source !== SOURCES.HOTLOADER
 
+
+export const createSwitchVersionMenu = (releases : any, onSwitchVersion : Function, options = {
+  limit: 15
+}) => {
+  const { limit } = options
+  releases = releases.slice(0, Math.min(releases.length - 1, limit))
+
+  // create it this way to get "stable" order
+  let channelMenu : {[index: string] : Object[] } = {
+    'release': [],
+    'production': [],
+    'master': [],
+    'nightly': [],
+    'alpha': [],
+    'beta': [],
+    'dev': [],
+    'ci': [],
+    'unknown': [],
+  }
+  
+  // @ts-ignore
+  releases.forEach((release : IRelease) => {
+
+    let {version, channel} = release
+    if(!channel) {
+      channel = 'unknown'
+    }
+
+    const releaseItem = {
+      label: release.tag,
+      click: async () => {
+        let title = 'Switch Version'
+        let message = `Do you want to load version ${version}?`
+        showDialog(title, message, {
+          'ok': () => {
+            console.log('switch now')
+            onSwitchVersion(version)
+          },
+          'cancel': () => { 
+
+          },
+        })
+      }
+    }
+
+    channelMenu[channel].push(releaseItem)
+
+  });
+
+  let channels = Object.keys(channelMenu)
+
+  // remove channels without items
+  channels.forEach(channel => {
+    if(channelMenu[channel].length <= 0) {
+      delete channelMenu[channel]
+    }
+  })
+
+  // if all items are lacking channel info don't create submenu
+  channels = Object.keys(channelMenu)
+  if(channels.length === 1 && channels[0] === 'unknown') {
+    return channelMenu['unknown']
+  } 
+
+  // convert channel struct to submenu
+  return channels.map(label => ({
+    label,
+    submenu: [...channelMenu[label]]
+  }))
+
+}
+
+export const createCheckUpdateMenu = (currentVersion: string, getLatest: Function) => {
+  return {
+    label: 'Check Update',
+    click: async () => {
+      try {
+        const latest = await getLatest()
+        if (latest && semver.lt(currentVersion, latest.version)) {
+          await showDialog('Update Found', `Update Found:\n\n${latest.name} - ${latest.version}\n\n${latest.location}\n\n`, {
+            'update': async () => {
+              // FIXME const appUrl = await this.appManager.hotLoad(latest)
+              // onReload(appUrl)
+            },
+            'cancel': () => {
+              // do nothing
+            }
+          })
+        } 
+        else {
+          showDialog('Update not found', 'Update not found')
+        }
+      } catch (error) {
+        console.log('error during update check', error)
+        showDialog('Update Error', 'Update Error')
+        return
+      }
+    }
+  }
+}
+
+export const createMenu = async (
+  name: string, 
+  version : string, 
+  repo : IRepository,
+  onSwitchVersion: Function
+) => {
+
+  const releases = await repo.getReleases()
+
+  const sub = {
+    label: name,
+    submenu: [
+      createCheckUpdateMenu(version, repo.getLatest.bind(repo)),
+      { type: 'separator' },
+      {
+        label: 'Switch Version',
+        submenu: createSwitchVersionMenu(releases, onSwitchVersion)
+      },
+      { type: 'separator' },
+      {
+        label: 'Open Cache',
+        click: function(){
+          console.log('open cache')
+          // shell.showItemInFolder(this.appManager.cacheDir) 
+        }
+      },
+      { type: 'separator' },
+      {
+        id: 'version',
+        label: version,
+        enabled: false
+      },
+    ]
+  }
+
+  const menuTemplate = {
+    label: 'Updater',
+    click: () => {},
+    submenu: [sub]
+  }
+  return menuTemplate
+}
+
+
 class MenuBuilder {
 
   menuTemplate : any // cached electron menu template
@@ -54,110 +204,9 @@ class MenuBuilder {
     this.appManager = appManager
   }
   
-  async createCheckUpdateMenu(onReload: Function){
-    return {
-      label: 'Check Update',
-      click: async () => {
-        try {
-          const updateInfo = await this.appManager.checkForUpdates()
-          const { latest } = updateInfo
-          if (updateInfo.updateAvailable) {
-            if (latest === null) {
-              throw new Error('latest release in update info must not be null')
-            }
-            await showDialog('Update Found', `Update Found:\n\n${latest.name} - ${latest.version}\n\n${latest.location}\n\n`, {
-              'update': async () => {
-                // FIXME const appUrl = await this.appManager.hotLoad(latest)
-                // onReload(appUrl)
-              },
-              'cancel': () => {
-                // do nothing
-              }
-            })
-          } 
-          else if(latest && !isRemoteSource(updateInfo.source)){
-            showDialog('Latest version', 'Latest version is being used')
-          } else {
-            showDialog('Update not found', 'Update not found')
-          }
-        } catch (error) {
-          console.log('error during update check', error)
-          showDialog('Update Error', 'Update Error')
-          return
-        }
-      }
-    }
-  }
   
-  async createSwitchVersionMenu(onReload: Function, options = {
-    limit: 15
-  }) {
-    const { limit } = options
-    let releases = await this.appManager.getReleases()
-    releases = releases.slice(0, Math.min(releases.length - 1, limit))
-
-    // create it this way to get "stable" order
-    let channelMenu : {[index: string] : Object[] } = {
-      'release': [],
-      'production': [],
-      'master': [],
-      'nightly': [],
-      'alpha': [],
-      'beta': [],
-      'dev': [],
-      'ci': [],
-      'unknown': [],
-    }
-    
-    // @ts-ignore
-    releases.forEach((release : IRelease) => {
-
-      let {version, channel} = release
-      if(!channel) {
-        channel = 'unknown'
-      }
-
-      const releaseItem = {
-        label: release.tag,
-        click: async () => {
-          let title = 'Switch Version'
-          let message = `Do you want to load version ${version}?`
-          showDialog(title, message, {
-            'ok': async () => {
-              // FIXME let appUrl = await this.appManager.hotLoad(release)
-              // FIXME onReload(appUrl)
-            },
-            'cancel': () => { },
-          })
-        }
-      }
-
-      channelMenu[channel].push(releaseItem)
-
-    });
-
-    let channels = Object.keys(channelMenu)
-
-    // remove channels without items
-    channels.forEach(channel => {
-      if(channelMenu[channel].length <= 0) {
-        delete channelMenu[channel]
-      }
-    })
-
-    // if all items are lacking channel info don't create submenu
-    channels = Object.keys(channelMenu)
-    if(channels.length === 1 && channels[0] === 'unknown') {
-      return channelMenu['unknown']
-    } 
-
-    // convert channel struct to submenu
-    return channels.map(label => ({
-      label,
-      submenu: [...channelMenu[label]]
-    }))
   
-  }
+ 
 
   async createMenuTemplate(onReload: Function) {
     if(this.menuTemplate){
@@ -165,12 +214,13 @@ class MenuBuilder {
     }
     const menuTemplate = {
       label: 'Updater',
+      click: () => {},
       submenu: [
-        await this.createCheckUpdateMenu(onReload),
+        // await this.createCheckUpdateMenu(onReload),
         { type: 'separator' },
         {
           label: 'Switch Version',
-          submenu: await this.createSwitchVersionMenu(onReload)
+          submenu: [] //await this.createSwitchVersionMenu(onReload)
         },
         {
           label: 'HotLoad Latest',
