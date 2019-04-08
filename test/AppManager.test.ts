@@ -16,11 +16,52 @@ describe('App Manager', () => {
   .reply(200, fs.readFileSync(__dirname+'/fixtures/azureReleases.xml'))
   .head('/builds/geth-alltools-windows-386-1.8.21-9dc5d1a9.zip').reply(200, 'ok')
   .get('/builds/geth-alltools-windows-386-1.8.21-9dc5d1a9.zip')
-  .reply(200, fs.readFileSync(__dirname+'/fixtures/BinCache/geth'))
+  .reply(200, fs.readFileSync(__dirname+'/fixtures/BinCache/geth-windows-amd64-1.8.20-24d727b6.exe'))
+  //.reply(200, fs.readFileSync(__dirname+'/fixtures/BinCache/geth'))
   .head('/builds/geth-alltools-windows-386-1.8.21-9dc5d1a9.zip.asc').reply(200, 'ok')
   .get('/builds/geth-alltools-windows-386-1.8.21-9dc5d1a9.zip.asc')
   .reply(200, fs.readFileSync(__dirname+'/fixtures/geth-alltools-darwin-amd64-1.8.21-9dc5d1a9.tar.gz.asc'))
 
+  function shuffle(a : any) {
+    var j, x, i;
+    for (i = a.length - 1; i > 0; i--) {
+        j = Math.floor(Math.random() * (i + 1));
+        x = a[i];
+        a[i] = a[j];
+        a[j] = x;
+    }
+    return a;
+  }
+
+  const scope2 = nock("https://api.github.com", {allowUnmocked: true})
+  .persist() // don't remove interceptor after request -> always return mock obj
+  .get("/repos/ethereum/grid-ui/releases")
+  .reply(200, shuffle(require('./fixtures/githubReleases1.json')))
+
+  const cachePath = __dirname + '/fixtures/Cache/'
+
+
+  describe('Releases', () => {
+    it("combines and sorts cached and remote releases", async function () {
+      const appManager = new AppManager({
+        repository: 'https://github.com/ethereum/grid-ui',
+        cacheDir: cachePath
+      })
+      let cached = await appManager.getCachedReleases()
+      assert.equal(cached.length, 2)
+      let remote = await appManager.getRemoteReleases()
+      assert.equal(remote.length, 20)
+      
+      const releases = await appManager.getReleases()
+      // @ts-ignore
+      const actualOrder = releases.map(r => r.version).join(',')
+      assert.equal(releases.length, 22)
+      const expectedOrder = '0.1.19,0.1.19-alpha,0.1.19,0.1.10-alpha,0.1.9-alpha,0.1.9-alpha,0.1.9-alpha,0.1.9-alpha,0.1.9-alpha,0.1.9-alpha,0.1.9-alpha,0.1.9-alpha,0.1.9-alpha,0.1.9-alpha,0.1.5-alpha,0.1.3-alpha,0.1.3,0.1.2,0.1.2,0.1.1,0.1.0,0.1.0'
+      assert.equal(actualOrder, expectedOrder)
+    })
+  })
+
+  /*
   describe('Constructor', () => {
 
     it("detects the correct repo based on the given url", async function () {
@@ -115,5 +156,6 @@ describe('App Manager', () => {
     })
 
   })
+  */
 
 })

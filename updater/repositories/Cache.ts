@@ -1,5 +1,5 @@
 import { IRelease, IInvalidRelease, IReleaseExtended } from '../api/IRelease'
-import { IRepository } from '../api/IRepository'
+import { IRepository, IReleaseOptions } from '../api/IRepository'
 import RepoBase from '../api/RepoBase'
 import fs from 'fs'
 import path from 'path'
@@ -73,7 +73,9 @@ class Cache extends RepoBase implements IRepository {
     return release
   }
 
-  async getReleases(): Promise<Array<(IRelease | IInvalidRelease)>> {
+  async getReleases({
+    sort = true
+  } : IReleaseOptions = {}): Promise<Array<(IRelease | IInvalidRelease)>> {
     let files = fs.readdirSync(this.cacheDirPath)
     files = files.filter(hasSupportedExtension)
     const filesFound = files && files.length > 0
@@ -87,8 +89,7 @@ class Cache extends RepoBase implements IRepository {
     releases = releases.filter(release => !('error' in release))
 
     // @ts-ignore
-    const sorted = releases.sort(this.compareVersions);
-    return sorted as any // FIXME remove any
+    return sort ? releases.sort(this.compareVersions) : releases
   }
   
   async getLatest(filter? : string) : Promise<IRelease | IReleaseExtended | null>  {

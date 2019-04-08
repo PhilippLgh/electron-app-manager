@@ -1,6 +1,6 @@
 import { IRemoteRepository } from './api/IRepository'
 import Cache from './repositories/Cache'
-import { IRelease, IReleaseExtended } from './api/IRelease'
+import { IRelease, IReleaseExtended, IInvalidRelease } from './api/IRelease'
 import fs from 'fs'
 import path from 'path'
 import RepoBase from './api/RepoBase'
@@ -281,8 +281,22 @@ export default class AppManager extends RepoBase{
     }
   }
 
-  async getReleases(){
+  async getCachedReleases(){
+    return this.cache.getReleases()
+  }
+
+  async getRemoteReleases(){
     return this.remote.getReleases()
+  }
+
+  async getReleases(){
+    const cachedReleases = await this.cache.getReleases({sort : false})
+    const remoteReleases = await this.remote.getReleases({sort : false})
+    const allReleases = [
+      ...cachedReleases,
+      ...remoteReleases
+    ]
+    return allReleases.sort(this.compareVersions)
   }
 
   async getLatestCached(){

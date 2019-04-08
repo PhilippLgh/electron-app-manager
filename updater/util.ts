@@ -81,7 +81,7 @@ export function hasSupportedExtension(fileName : string){
   return SUPPORTED_EXTENSIONS.includes(ext)
 }
 
-const isRelease = <IRelease>(value: any): value is IRelease => {
+export const isRelease = <IRelease>(value: any): value is IRelease => {
   return value !== null && value !== undefined && !value.error && value.version
 }
 
