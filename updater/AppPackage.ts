@@ -120,7 +120,7 @@ export default class AppPackage {
       if(!entry){
         return null
       }
-      let content = entry.file.readContent()
+      let content = await entry.file.readContent()
       return JSON.parse(content.toString())
     } catch (error) {
       return null
