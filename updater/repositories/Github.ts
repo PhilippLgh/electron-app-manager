@@ -1,11 +1,12 @@
 import { IRelease, IInvalidRelease, IMetadata, IReleaseExtended } from '../api/IRelease'
-import { IRemoteRepository } from '../api/IRepository'
+import { IRemoteRepository, IReleaseOptions } from '../api/IRepository'
 import RepoBase from '../api/RepoBase'
 // @ts-ignore
 import { download, downloadJson } from '../lib/downloader'
 import semver from 'semver'
 import GitHub, { ReposListReleasesResponseItem } from '@octokit/rest'
 import path from 'path'
+import { isRelease } from '../util';
 
 class Github extends RepoBase implements IRemoteRepository {
   
@@ -154,7 +155,10 @@ class Github extends RepoBase implements IRemoteRepository {
   }
   */
 
-  async getReleases(): Promise<Array<(IRelease | IInvalidRelease)>> {
+  async getReleases({
+    sort = true,
+    filterInvalid = true
+  } : IReleaseOptions = {} ) : Promise<Array<(IRelease | IInvalidRelease)>> {
     // FIXME use pagination
     try {
       let releaseInfo = await this.client.repos.listReleases({
@@ -165,7 +169,12 @@ class Github extends RepoBase implements IRemoteRepository {
       // convert to proper format
       let releases = releaseInfo.data.map(this.toRelease.bind(this))
 
-      return this.sortReleases(releases);
+      // filter invalid releases
+      if (filterInvalid) {
+        releases = releases.filter(isRelease)
+      }
+
+      return sort ? releases : this.sortReleases(releases)
     } catch (error) {
       // FIXME handle API errors such as rate-limits
       return []
