@@ -1,10 +1,14 @@
 import { IRelease, IInvalidRelease, IReleaseExtended } from './IRelease'
 
+export interface IReleaseOptions {
+  sort?: boolean | undefined,
+  filterInvalid?: boolean | undefined
+}
 export interface IRepository {
 
   name : string;
   
-  getReleases(semverFilter? : string): Promise<Array<(IRelease | IInvalidRelease)>>;
+  getReleases(options? : IReleaseOptions): Promise<Array<(IRelease | IInvalidRelease)>>;
 
   getLatest(semverFilter? : string): Promise<IRelease | IReleaseExtended | null>;
 
