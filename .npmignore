@@ -1,9 +1,14 @@
 test/
+dist/test/
 updater/
 assets/
 docs/
 .circleci/
 _*
 remoteZip.js
-
+package/
 .env
+tsconfig.json
+yarn-error.log
+logo.svg
+index.ts

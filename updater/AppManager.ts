@@ -7,19 +7,21 @@ import RepoBase from './api/RepoBase'
 import MenuBuilder from './electron/menu'
 import { getRepository } from './repositories'
 import ModuleRegistry from './ModuleRegistry';
-import { getEthpkg } from './util';
+import { getEthpkg, isElectron } from './util';
 
 
 let autoUpdater : any, CancellationToken : any = null
 let dialogs : any = null
-try {
-  let eu = require("electron-updater")
-  autoUpdater = eu.autoUpdater
-  autoUpdater.allowDowngrade = false
-  CancellationToken = eu.CancellationToken
-  dialogs = require('./electron/Dialog').ElectronDialogs
-} catch (error) {
-  console.log('error during require of electron modules', error && error.message /*, error*/)
+if(isElectron()) {
+  try {
+    let eu = require("electron-updater")
+    autoUpdater = eu.autoUpdater
+    autoUpdater.allowDowngrade = false
+    CancellationToken = eu.CancellationToken
+    dialogs = require('./electron/Dialog').ElectronDialogs
+  } catch (error) {
+    console.log('error during require of electron modules', error && error.message /*, error*/)
+  }
 }
 
 interface IUpdateInfo {
