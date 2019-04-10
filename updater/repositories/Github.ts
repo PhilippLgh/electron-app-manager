@@ -6,7 +6,7 @@ import { download, downloadJson } from '../lib/downloader'
 import semver from 'semver'
 import GitHub, { ReposListReleasesResponseItem } from '@octokit/rest'
 import path from 'path'
-import { isRelease } from '../util';
+import { isRelease, hasSupportedExtension } from '../util';
 
 class Github extends RepoBase implements IRemoteRepository {
   
@@ -66,7 +66,7 @@ class Github extends RepoBase implements IRemoteRepository {
         error: 'release does not contain any assets'
       }
     }
-    let app = releaseInfo.assets.find(release => release.name.endsWith('.asar') || release.name.endsWith('.zip'))
+    let app = releaseInfo.assets.find(release => hasSupportedExtension(release.name))
     if(!app){
       return {
         name: tag_name,
