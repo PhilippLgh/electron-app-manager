@@ -102,18 +102,30 @@ class Azure extends RepoBase implements IRemoteRepository {
       checksums: {
         md5: md5AtoB
       },
-      ..._release // overwrite with client values
+      ..._release, // overwrite with client values
+      remote: true
     } as any
 
     return release
   }
 
   async getReleases(): Promise<(IRelease | IInvalidRelease | IInvalidRelease)[]> {
+    // console.time('download')
     let result = await download(this.repoUrl)
-    const parsed = await parseXml(result)
+    // console.timeEnd('download') // 1502.350ms
+    // console.time('parse')
+    let parsed
+    try {
+      parsed = await parseXml(result)
+    } catch (error) {
+      console.log('error: release feed could not be parsed: ', result)
+      return []
+    }
+    // console.timeEnd('parse') // 93.232ms
     const blobs = parsed.EnumerationResults.Blobs[0].Blob
-    
+    // console.time('convert')
     let releases = blobs.map(this.toRelease)
+    // console.timeEnd('convert') // 11.369ms
 
     // scan to create client specific mapping ansd filter
     let mapping : {[index : string] : IRelease } = {}
