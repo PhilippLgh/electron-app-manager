@@ -214,7 +214,8 @@ export default class AppManager extends RepoBase{
             tag: '',
             location: '',
             repository: '',
-            error: undefined
+            error: undefined,
+            remote: true
           } 
         } 
 
@@ -327,18 +328,26 @@ export default class AppManager extends RepoBase{
     return latestReleases[0]
   }
 
-  async download(release : IRelease, {writePackageData = true, writeDetachedMetadata = true, targetDir = this.cache.cacheDirPath} = {} ){
+  async download(release : IRelease, {
+    writePackageData = true, 
+    writeDetachedMetadata = true, 
+    targetDir = this.cache.cacheDirPath,
+    onProgress = (progress : number) => {}
+  } = {} ){
 
     let pp = 0;
-    let onProgress = (p : number) => {
+    let _onProgress = (p : number) => {
       let pn = Math.floor(p * 100);
       if (pn > pp) {
         pp = pn;
         // console.log(`downloading update..  ${pn}%`)
-        this.emit('update-progress', release, pn);
+        this.emit('update-progress', release, pn)
+        if (onProgress) {
+          onProgress(pn)
+        }
       }
     }
-    const packageData = await this.remote.download(release, onProgress)
+    const packageData = await this.remote.download(release, _onProgress)
     const location = path.join(targetDir, release.fileName)
 
     if(writePackageData){
