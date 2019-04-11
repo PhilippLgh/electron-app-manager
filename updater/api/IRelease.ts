@@ -22,6 +22,7 @@ export interface IRelease extends IReleaseBase {
   error: void;
   signature?: string // url
   metadata?: string // url
+  remote: boolean
 }
 
 export interface IMetadata {

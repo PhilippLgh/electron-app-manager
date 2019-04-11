@@ -94,7 +94,8 @@ class Github extends RepoBase implements IRemoteRepository {
       size,
       tag: tag_name,
       location: assetUrlApp,
-      error: undefined
+      error: undefined,
+      remote: true
     }
   }
 

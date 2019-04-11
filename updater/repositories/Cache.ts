@@ -67,7 +67,8 @@ class Cache extends RepoBase implements IRepository {
     // order is imortant or location e.g. would be url
     release = {
       ...metadata,
-      ...release
+      ...release,
+      remote: false
     }
 
     return release
