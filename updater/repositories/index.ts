@@ -24,7 +24,9 @@ export const getRepository = (urlString : string, modifiers? : any, filter? : an
         filter
       })      
     } else {
-      return new AzureRepo(urlString)
+      return new AzureRepo(urlString, {
+        filter
+      })
     }
   }
   else {
