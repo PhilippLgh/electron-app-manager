@@ -30,9 +30,10 @@ class Azure extends RepoBase implements IRemoteRepository {
   public name: string = 'Azure';
   filter: Function;
 
-  constructor(repoUrl : string, options? : any){
+  constructor(repoUrl : string, options : any = {}){
     super()
-    this.repoUrl = repoUrl
+    const { prefix } = options
+    this.repoUrl = repoUrl + (prefix || '')
     this.onReleaseParsed = options && options.onReleaseParsed
     this.filter = options && options.filter
     this.toRelease = this.toRelease.bind(this)

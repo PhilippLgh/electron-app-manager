@@ -38,7 +38,8 @@ interface IUpdaterOptions {
   cacheDir?: string;
   downloadDir?: string;
   modifiers? : { [key : string] : Function }
-  filter?: Function
+  filter?: Function,
+  prefix? : string
 }
 
 const SOURCES = {
@@ -58,10 +59,10 @@ export default class AppManager extends RepoBase{
   /**
    *
    */
-  constructor({ repository, auto = true, electron = false, intervalMins = 15, cacheDir, modifiers, filter } : IUpdaterOptions) {
+  constructor({ repository, auto = true, electron = false, intervalMins = 15, cacheDir, modifiers, filter, prefix } : IUpdaterOptions) {
     super();
 
-    this.remote = getRepository(repository, modifiers, filter)
+    this.remote = getRepository(repository, modifiers, filter, prefix)
 
     this.menuBuilder = new MenuBuilder(this)
 

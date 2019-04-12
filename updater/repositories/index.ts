@@ -2,7 +2,7 @@ import GithubRepo from './Github'
 import AzureRepo from './Azure'
 import { IRelease } from '../api/IRelease'
 
-export const getRepository = (urlString : string, modifiers? : any, filter? : any) => {
+export const getRepository = (urlString : string, modifiers? : any, filter? : any, prefix? : string) => {
   if(urlString.startsWith('https://github.com/')) {
     return new GithubRepo(urlString)
   }
@@ -21,11 +21,13 @@ export const getRepository = (urlString : string, modifiers? : any, filter? : an
       }
       return new AzureRepo(urlString, {
         onReleaseParsed: mod,
-        filter
+        filter,
+        prefix
       })      
     } else {
       return new AzureRepo(urlString, {
-        filter
+        filter,
+        prefix
       })
     }
   }
