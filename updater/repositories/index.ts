@@ -7,10 +7,6 @@ export const getRepository = (urlString : string, modifiers? : any, filter? : an
     return new GithubRepo(urlString)
   }
   else if(urlString.includes('blob.core.windows.net')){
-
-    // FIXME check that only host name provided or parse
-    urlString += '/builds?restype=container&comp=list'
-
     if(modifiers){
       let mod = (release : IRelease) => {
         let result : {[key:string] : any} = { }

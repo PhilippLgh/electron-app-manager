@@ -33,7 +33,8 @@ class Azure extends RepoBase implements IRemoteRepository {
   constructor(repoUrl : string, options : any = {}){
     super()
     const { prefix } = options
-    this.repoUrl = repoUrl + (prefix || '')
+    // FIXME check that only host name provided or parse
+    this.repoUrl = repoUrl + '/builds?restype=container&comp=list' + (prefix ? `&prefix=${prefix}` : '')
     this.onReleaseParsed = options && options.onReleaseParsed
     this.filter = options && options.filter
     this.toRelease = this.toRelease.bind(this)
@@ -124,6 +125,9 @@ class Azure extends RepoBase implements IRemoteRepository {
     }
     // console.timeEnd('parse') // 93.232ms
     const blobs = parsed.EnumerationResults.Blobs[0].Blob
+    if(!blobs) {
+      return []
+    }
     // console.time('convert')
     let releases = blobs.map(this.toRelease)
     // console.timeEnd('convert') // 11.369ms
