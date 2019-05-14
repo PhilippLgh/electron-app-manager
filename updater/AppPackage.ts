@@ -4,7 +4,7 @@ import zlib from 'zlib'
 
 import WritableMemoryStream from './lib/WritableMemoryStream'
 
-import { ethpkg, IPackage, IPackageEntry } from '@philipplgh/ethpkg';
+import { ethpkg, pkgsign, IPackage, IPackageEntry } from 'ethpkg';
 
 
 const pubKeyBuildServer = `
@@ -87,6 +87,14 @@ export default class AppPackage {
 
   get detachedMetadataPath() : string {
     return this.packagePath + '.metadata.json'
+  }
+
+  async verify() {
+    if(!this.pkg){
+      return null
+    }
+    const result = await pkgsign.verify(this.pkg!)
+    return result
   }
 
   async hasEmbeddedMetadata(): Promise<any> {

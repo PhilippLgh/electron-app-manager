@@ -3,7 +3,7 @@ import path from 'path'
 import {parseString} from 'xml2js'
 
 import { IRelease, IInvalidRelease } from "./api/IRelease"
-import { pkgsign } from '@philipplgh/ethpkg'
+import { pkgsign } from 'ethpkg'
 
 import { download } from "./lib/downloader"
 
@@ -63,7 +63,7 @@ export function isUrl(str : string) {
   return str.length < 2083 && url.test(str);
 }
 
-const SUPPORTED_EXTENSIONS = ['.zip', '.tar.gz', '.tar']
+const SUPPORTED_EXTENSIONS = ['.zip', '.tar.gz', '.tgz', '.tar']
 
 // this helper is especially used to support .tar.gz
 export const getExtension = (fileName : string) => {

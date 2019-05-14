@@ -2,7 +2,7 @@ import fs from 'fs'
 import url from 'url'
 import { getRepository } from '../repositories'
 import { request } from '../lib/downloader'
-import { pkgsign } from '@philipplgh/ethpkg'
+import { pkgsign } from 'ethpkg'
 import protocol from '../abstraction/protocol'
 import ModuleRegistry from '../ModuleRegistry';
 import { createSwitchVersionMenu, createCheckUpdateMenu, createMenu } from '../electron/menu';

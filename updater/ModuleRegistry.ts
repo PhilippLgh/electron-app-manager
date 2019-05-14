@@ -1,5 +1,5 @@
 import url from 'url'
-import { IPackage, pkgsign } from "@philipplgh/ethpkg"
+import { IPackage, pkgsign } from "ethpkg"
 import { IRepository } from './api/IRepository'
 import { EventEmitter } from 'events'
 

@@ -7,10 +7,7 @@ import path from 'path'
 import { verifyPGP, checksumMd5 } from '../tasks/verify'
 import AppPackage from '../AppPackage'
 import { getExtension, hasSupportedExtension } from '../util'
-
-import { ethpkg, pkgsign } from '@philipplgh/ethpkg'
-
-const SUPPORTED_EXTENSIONS = ['.zip', '.tar.gz', '.tar']
+import { pkgsign as ethpkg } from 'ethpkg'
 
 // for different caching strategies see
 // https://serviceworke.rs/caching-strategies.html
@@ -29,10 +26,7 @@ class Cache extends RepoBase implements IRepository {
     const name = path.parse(fileName).name
     const location = path.join(this.cacheDirPath, fileName)
 
-    let ext = getExtension(fileName)
-    let isExtensionSupported = SUPPORTED_EXTENSIONS.includes(ext)
-
-    if(!isExtensionSupported){
+    if(!hasSupportedExtension(fileName)){
       return {
         name,
         error: 'Unsupported package extension: ' + fileName
@@ -56,6 +50,8 @@ class Cache extends RepoBase implements IRepository {
       }
     }
 
+    const verificationResult = await appPackage.verify()
+
     if(metadata.signature) {
       //console.log('signature found', release.signature)
       //let result = await verifyPGP(binFileName, pubKeyBuildServer, metadata.signature)
@@ -64,10 +60,11 @@ class Cache extends RepoBase implements IRepository {
 
     // console.log('metadata', metadata)
 
-    // order is imortant or location e.g. would be url
+    // order is important or location e.g. would be url
     release = {
       ...metadata,
       ...release,
+      verificationResult,
       remote: false
     }
 
@@ -86,6 +83,11 @@ class Cache extends RepoBase implements IRepository {
 
     let releases = files.map(async (file : string) => this.toRelease(file))
     releases = await Promise.all(releases)
+
+    let faulty = releases.filter(release => ('error' in release))
+    if (faulty && faulty.length > 0) {
+      console.log(`detected ${faulty.length} corrupted releases in cache`)
+    }
 
     releases = releases.filter(release => !('error' in release))
 
