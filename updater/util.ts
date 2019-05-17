@@ -114,6 +114,7 @@ export const isElectron = () => {
     return true
   }
   // Main process
+  // @ts-ignore Property 'electron' does not exist on type 'ProcessVersions'
   if (typeof process !== 'undefined' && typeof process.versions === 'object' && !!process.versions.electron) {
     return true
   }
