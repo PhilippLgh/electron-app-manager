@@ -130,10 +130,7 @@ export const loadRemoteApp = async (repoUrl : string, queryArgs : any,  webConte
   // TODO implement caching strategy here
 
   // turn buffer into ethpkg
-  console.log('package data available', packageData.length)
   const pkg = await pkgsign.loadPackage(packageData)
-
-  console.log('package available', pkg)
 
   // 5. register module as hot-loaded module
   const appUrl = await ModuleRegistry.add({
