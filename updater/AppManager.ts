@@ -6,8 +6,9 @@ import path from 'path'
 import RepoBase from './api/RepoBase'
 import MenuBuilder from './electron/menu'
 import { getRepository } from './repositories'
-import ModuleRegistry from './ModuleRegistry';
-import { getEthpkg, isElectron } from './util';
+import ModuleRegistry from './ModuleRegistry'
+import { getEthpkg, isElectron } from './util'
+import { pkgsign } from 'ethpkg'
 
 
 let autoUpdater : any, CancellationToken : any = null
@@ -351,6 +352,11 @@ export default class AppManager extends RepoBase{
     const packageData = await this.remote.download(release, _onProgress)
     const location = path.join(targetDir, release.fileName)
 
+    // verify package signature: TODO we can enforce a policy here that invalid
+    // packages are not even written to disk
+    const pkg = await getEthpkg(packageData)
+    const verificationResult = await pkgsign.verify(pkg!)
+
     if(writePackageData){
       if(writeDetachedMetadata){
         const detachedMetadataPath = path.join(targetDir, release.fileName + '.metadata.json')
@@ -363,6 +369,8 @@ export default class AppManager extends RepoBase{
       return {
         ...release,
         location: 'memory',
+        remote: false,
+        verificationResult,
         data: packageData
       }
     }
@@ -371,6 +379,8 @@ export default class AppManager extends RepoBase{
 
     return {
       ...release,
+      remote: false,
+      verificationResult,
       location
     }
   }
