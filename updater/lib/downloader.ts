@@ -5,13 +5,16 @@ import WritableMemoryStream from './WritableMemoryStream'
 
 export function request(method : string, _url : string, opts = {}) : Promise<http.IncomingMessage> {
   const parsedURL = url.parse(_url);
-  let protocolHandler = parsedURL.protocol === "https:" ? https : http;
+  const {protocol, hostname, port, path} = parsedURL
+
+  let protocolHandler = protocol === "https:" ? https : http;
 
   const options = {
-    protocol: parsedURL.protocol,
-    hostname: parsedURL.hostname,
+    protocol,
+    hostname,
+    port, 
     method,
-    path: parsedURL.path,
+    path,
     ...opts
   };
 
