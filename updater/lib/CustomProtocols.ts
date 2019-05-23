@@ -4,24 +4,8 @@ import { getRepository } from '../repositories'
 import { request } from '../lib/downloader'
 import { pkgsign } from 'ethpkg'
 import protocol from '../abstraction/protocol'
-import ModuleRegistry from '../ModuleRegistry';
-import { createSwitchVersionMenu, createCheckUpdateMenu, createMenu } from '../electron/menu';
-
-
-const findWindowByTitle = (title : string) => {
-  const { BrowserWindow } = require('electron')
-  const windows = BrowserWindow.getAllWindows()
-  const window = windows.find(win => win.getTitle() === title)
-  return window
-}
-
-const _findWebContentsByTitle = (title : string) => {
-  const { webContents } = require('electron')
-  let _webContents = webContents.getAllWebContents()
-  const titles = _webContents.map(w => w.getTitle())
-  const wc = _webContents.find(w => w.getTitle() === title)
-  return wc
-}
+import ModuleRegistry from '../ModuleRegistry'
+import { createSwitchVersionMenu, createCheckUpdateMenu, createMenu } from '../electron/menu'
 
 const findWebContentsByTitle = (windowTitle : string, callback: Function) => {
   const { webContents } = require('electron')
@@ -143,6 +127,7 @@ export const loadRemoteApp = async (repoUrl : string, queryArgs : any,  webConte
 
   const switchVersion = (userVersion : string) => {
     console.log('switch version to', userVersion)
+    // FIXME not always https
     const newUrl = `package://${repoUrl.replace('https://', '')}?version=${userVersion}`
     webContents.loadURL(newUrl)
   }
@@ -195,7 +180,7 @@ const prepareUninitialized = async (repoUrl : string, service : string, queryArg
 
 const hotLoadProtocolHandler = async (fileUri : string, handler : any) => {
 
-  console.log('handle request', fileUri)
+  // console.log('handle request', fileUri)
   
   // extract query params
   let url_parts = url.parse(fileUri, true)
