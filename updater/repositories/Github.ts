@@ -6,7 +6,14 @@ import { download, downloadJson } from '../lib/downloader'
 import semver from 'semver'
 import GitHub, { ReposListReleasesResponseItem } from '@octokit/rest'
 import path from 'path'
-import { isRelease, hasSupportedExtension } from '../util';
+import { isRelease, hasSupportedExtension } from '../util'
+
+interface IAsset {
+  name: string,
+  browser_download_url: string,
+  size: number,
+  download_count: number
+}
 
 class Github extends RepoBase implements IRemoteRepository {
   
@@ -38,7 +45,37 @@ class Github extends RepoBase implements IRemoteRepository {
     return this._repositoryUrl
   }
 
-  private toRelease(releaseInfo : ReposListReleasesResponseItem) : (IRelease | IInvalidRelease) {
+  private assetToRelease(asset : IAsset, {
+    releaseName,
+    tag_name,
+    branch,
+    version,
+    channel
+  } : any) : IRelease | IInvalidRelease {
+
+    const { name: assetName, browser_download_url: assetUrl, size, download_count } = asset
+    const packageName = assetName && path.basename(assetName)
+
+    const name = packageName || releaseName || tag_name
+
+    return {
+      name,
+      displayName: name,
+      repository: this.repositoryUrl,
+      fileName: assetName,
+      commit: branch,
+      publishedDate: new Date(),
+      version,
+      channel,
+      size,
+      tag: tag_name,
+      location: assetUrl,
+      error: undefined,
+      remote: true
+    }
+  }
+
+  private toRelease(releaseInfo : ReposListReleasesResponseItem) : Array<IRelease | IInvalidRelease> {
 
     const { 
       name : releaseName,
@@ -52,10 +89,10 @@ class Github extends RepoBase implements IRemoteRepository {
     const version = this.normalizeTag(versionTag);
 
     if(!semver.valid(version)) {
-      return {
+      return [{
         name: tag_name,
         error: 'parse error / invalid version: ' + versionTag 
-      }
+      }]
     }
 
     const prereleaseInfo = semver.prerelease(version)
@@ -63,47 +100,36 @@ class Github extends RepoBase implements IRemoteRepository {
 
     // let metadata = releaseInfo.assets.find(release => release.name === 'metadata.json')
     if(!releaseInfo.assets){
-      return {
+      return [{
         name: tag_name,
         error: 'release does not contain any assets'
-      }
+      }]
     }
     let { assets } = releaseInfo
     if (this.prefixFilter !== undefined && assets) {
       // @ts-ignore
       assets = assets.filter(asset => asset.name.includes(this.prefixFilter))
     }
-    let app = assets.find(release => hasSupportedExtension(release.name))
-    if(!app){
-      return {
+
+    assets = assets.filter(asset => hasSupportedExtension(asset.name))
+    if(assets.length <= 0){
+      return [{
         name: tag_name,
-        error: 'release does not contain an app package (.asar or .zip)'
-      }
+        error: 'release does not contain any app packages (.asar or .zip)'
+      }]
     }
 
-    const appName = app.name && path.basename(app.name)
-    const assetUrlApp = app.browser_download_url
-    const size = app.size
-    const downloads = app.download_count
-    const name = appName || releaseName || tag_name
-
-    // console.log('release info asset: ', app)
-
-    return {
-      name,
-      displayName: name,
-      repository: this.repositoryUrl,
-      fileName: app.name,
-      commit: branch,
-      publishedDate: new Date(),
+    let releases = assets.map(a => this.assetToRelease(a, {
+      releaseName,
+      tag_name,
+      branch,
       version,
-      channel,
-      size,
-      tag: tag_name,
-      location: assetUrlApp,
-      error: undefined,
-      remote: true
-    }
+      channel
+    }))
+    
+    // console.log('releases of assets', releases)
+
+    return releases
   }
 
   async getMetadata(release : IRelease) : Promise<IMetadata | null> {
@@ -175,7 +201,9 @@ class Github extends RepoBase implements IRemoteRepository {
       });
 
       // convert to proper format
-      let releases = releaseInfo.data.map(this.toRelease.bind(this))
+      let releases = releaseInfo.data.map(this.toRelease.bind(this)).reduce((prev, cur) => {
+        return prev.concat(cur)
+      })
 
       // filter invalid releases
       if (filterInvalid) {
@@ -215,7 +243,7 @@ class Github extends RepoBase implements IRemoteRepository {
 
   async download(release: IRelease, onProgress = (progress : number) => {}): Promise<Buffer> {
     const { location } = release;
-    let data = await download(location, onProgress);
+    const data = await download(location, onProgress);
     return data;
   }  
 
