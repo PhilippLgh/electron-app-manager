@@ -35,9 +35,9 @@ class Swarm extends RepoBase implements IRemoteRepository {
   }
 
   async download(release: IRelease, onProgress = (progress : number) => {}): Promise<Buffer> {
-    const hash = '24f0c0e4272ca1bbb7e32fe1d8bf87367b169f74415e48eb9f2ca4552759ef5c'
-    const location = `http://localhost:8500/bzz:/${hash}`
-    throw new Error("Method not implemented.")
+    const { location } = release;
+    const data = await download(location, onProgress)
+    return data
   }
 
 }
