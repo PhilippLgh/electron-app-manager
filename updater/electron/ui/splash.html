@@ -12,15 +12,15 @@
       margin: 0;
       padding: 0;
       width: 100%;
-      height: 100%;
+      /* height: 100vh; */
       overflow: hidden;
     }
 
     .container {
       width: 100%;
-      height: 100%;
+      /* height: 100%; */
       display: flex;
-      background-color: #E1E1E1;
+      /* background-color: #E1E1E1; */
     }
 
     .brand {
@@ -70,7 +70,7 @@
     .overlay {
       background: linear-gradient(to bottom, #ffffffcc, #fbfbfbad);
       width: 100%;
-      height: 100%;
+      /*height: 100%;*/
       position: absolute;
     }
 
@@ -175,7 +175,7 @@
   <script>
 
     const cw = 600 // window.innerWidth
-    const ch = 350 // window.innerHeight
+    const ch = 330 // window.innerHeight
 
     const initCanvas = (w, h) => {
       const container = document.getElementById('container')
@@ -191,15 +191,15 @@
 
     const resetCanvas = () => {
       var grd = ctx.createLinearGradient(0, 0, cw, 0);
-      grd.addColorStop(0, "#E3E3E3");
-      grd.addColorStop(1, "#EEE");
+      grd.addColorStop(0, "#F3F3F3");
+      grd.addColorStop(1, "#F3F3F3");
       ctx.fillStyle = grd;
       ctx.fillRect(0, 0, cw, ch);
     }
 
     const resetProgressCanvas = () => {
       var grd = ctx.createLinearGradient(0, ch, cw, 0);
-      grd.addColorStop(0, "#EAEAEF");
+      grd.addColorStop(0, "#FAFAFA");
       grd.addColorStop(1, "#FAFAFA");
       ctx.fillStyle = grd;
       ctx.fillRect(0, 0, cw, ch);
@@ -258,7 +258,7 @@
     const displayConnecting = (repo) => {
       const data = window.data || {}
       const version = data.version || 'Latest'
-      displayTitle(`Find ${version}`)
+      displayTitle(`Finding ${version}...`)
       // FIXME writeCenteredIcon("\uf09b")
       if(githubLogo) {
         writeCenteredImage(githubLogo)
