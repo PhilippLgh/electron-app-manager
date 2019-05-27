@@ -198,7 +198,7 @@ class Github extends RepoBase implements IRemoteRepository {
       let releaseInfo = await this.client.repos.listReleases({
         owner: this.owner,
         repo: this.repo
-      });
+      })
 
       // convert to proper format
       let releases = releaseInfo.data.map(this.toRelease.bind(this)).reduce((prev, cur) => {
@@ -212,6 +212,7 @@ class Github extends RepoBase implements IRemoteRepository {
 
       return sort ? releases : this.sortReleases(releases)
     } catch (error) {
+      console.log('could not retrieve releases list from github', error.message)
       // FIXME handle API errors such as rate-limits
       return []
     }
@@ -228,7 +229,7 @@ class Github extends RepoBase implements IRemoteRepository {
     if (releases.length <= 0) {
       return null
     }
-    let temp = releases[0];
+    let temp = releases[0]
     // is invalid release
     if(temp.error !== undefined){
       return null
