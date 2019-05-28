@@ -210,7 +210,11 @@ class Github extends RepoBase implements IRemoteRepository {
         releases = releases.filter(isRelease)
       }
 
-      return sort ? releases : this.sortReleases(releases)
+      // @ts-ignore generate test data
+      // console.log('latest releases unsorted\n', releases.map(r => `{ version: '${r.version}', channel: '${r.channel}' }`).slice(0, 5).join(',\n'))
+
+      return sort ? this.sortReleases(releases) : releases
+
     } catch (error) {
       console.log('could not retrieve releases list from github', error.message)
       // FIXME handle API errors such as rate-limits
