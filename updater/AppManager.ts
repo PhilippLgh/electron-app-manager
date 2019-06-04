@@ -270,13 +270,15 @@ export default class AppManager extends RepoBase{
               try {
                 await autoUpdater.downloadUpdate(cancellationToken)
               } catch (error) {
-                // TODO handle download errors                
+                dialogs.displayUpdateError(error)                
               }
               try {
                 autoUpdater.quitAndInstall() 
               } catch (error) {
-                // TODO handle restart errors                                
+                dialogs.displayUpdateError(error)                
               }
+            } else {
+              console.log('user ignored update')
             }
           })
         }
