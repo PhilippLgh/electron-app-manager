@@ -257,7 +257,7 @@ export default class AppManager extends RepoBase{
     }
   }
 
-  async checkForUpdatesAndNotify() {
+  async checkForUpdatesAndNotify(showNoUpdate = false) {
     if(this.isElectron) {
       const {updateAvailable, latest} = await this.checkForUpdates()
       if(updateAvailable && latest) {
@@ -283,7 +283,9 @@ export default class AppManager extends RepoBase{
           })
         }
       } else {
-        dialogs.displayUpToDateDialog()
+        if (showNoUpdate) {
+          dialogs.displayUpToDateDialog()
+        }
       }
     } else {
       throw new Error('not implemented')
