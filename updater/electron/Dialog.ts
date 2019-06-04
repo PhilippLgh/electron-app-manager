@@ -18,6 +18,12 @@ export class ElectronDialogs {
       callback(shouldInstall)
     })
   }
+  static displayUpToDateDialog() {
+    dialog.showMessageBox({
+      title: 'No update',
+      message: 'You are using the latest version'
+    })
+  }
   static displayUpdateError(err: Error) {
     dialog.showMessageBox({
       title: 'Update Error',

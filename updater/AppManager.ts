@@ -282,6 +282,8 @@ export default class AppManager extends RepoBase{
             }
           })
         }
+      } else {
+        dialogs.displayUpToDateDialog()
       }
     } else {
       throw new Error('not implemented')
