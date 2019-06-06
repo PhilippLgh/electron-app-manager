@@ -124,3 +124,13 @@ export const isElectron = () => {
   }
   return false
 }
+
+export const isPackaged = () => {
+  try {
+    const electron = require('electron')
+    const app = electron.app || electron.remote.app;
+    return app.isPackaged
+  } catch (error) {
+    return false
+  }
+}

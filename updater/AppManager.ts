@@ -7,7 +7,7 @@ import RepoBase from './api/RepoBase'
 import MenuBuilder from './electron/menu'
 import { getRepository } from './repositories'
 import ModuleRegistry from './ModuleRegistry'
-import { getEthpkg, isElectron } from './util'
+import { getEthpkg, isElectron, isPackaged } from './util'
 import { pkgsign } from 'ethpkg'
 
 
@@ -258,7 +258,10 @@ export default class AppManager extends RepoBase{
   }
 
   async checkForUpdatesAndNotify(showNoUpdate = false) {
-    if(this.isElectron) {
+    // isPackaged is a safe guard for
+    // https://electronjs.org/docs/api/auto-updater#macos
+    // "Note: Your application must be signed for automatic updates on macOS. This is a requirement of Squirrel.Mac"
+    if(this.isElectron && isPackaged()) {
       const {updateAvailable, latest} = await this.checkForUpdates()
       if(updateAvailable && latest) {
         if(dialogs) {
@@ -268,12 +271,15 @@ export default class AppManager extends RepoBase{
               // TODO check if we can use UpdateInfo instead
               const cancellationToken = new CancellationToken()
               try {
+                autoUpdater.once('update-downloaded', () => {
+                  autoUpdater.quitAndInstall()
+                })
                 await autoUpdater.downloadUpdate(cancellationToken)
               } catch (error) {
                 dialogs.displayUpdateError(error)                
               }
               try {
-                autoUpdater.quitAndInstall() 
+                // autoUpdater.quitAndInstall() 
               } catch (error) {
                 dialogs.displayUpdateError(error)                
               }
