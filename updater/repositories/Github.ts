@@ -28,9 +28,13 @@ class Github extends RepoBase implements IRemoteRepository {
   constructor(repoUrl : string, prefixFilter? : string){
     super()
     // WARNING: For unauthenticated requests, the rate limit allows for up to 60 requests per hour.
-    this.client = new GitHub()
     if (process.env.GITHUB_TOKEN && typeof process.env.GITHUB_TOKEN === 'string') {
-      this.client.authenticate({type: 'token', token: process.env.GITHUB_TOKEN})
+      this.client = new GitHub({
+        // @ts-ignore
+        auth: process.env.GITHUB_TOKEN
+      })
+    } else {
+      this.client = new GitHub()
     }
 
     this.prefixFilter = prefixFilter
