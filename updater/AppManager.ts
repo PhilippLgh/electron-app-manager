@@ -9,6 +9,7 @@ import { getRepository } from './repositories'
 import ModuleRegistry from './ModuleRegistry'
 import { getEthpkg, isElectron, isPackaged } from './util'
 import { pkgsign } from 'ethpkg'
+import ElectronLog from 'electron-log'
 
 
 let autoUpdater : any, CancellationToken : any = null
@@ -17,7 +18,6 @@ if(isElectron()) {
   try {
     let eu = require("electron-updater")
     autoUpdater = eu.autoUpdater
-    autoUpdater.allowDowngrade = false
     CancellationToken = eu.CancellationToken
     dialogs = require('./electron/Dialog').ElectronDialogs
   } catch (error) {
@@ -92,28 +92,57 @@ export default class AppManager extends RepoBase{
   }
 
   private setupAutoUpdater () {
-    // silence autoUpdater -> we will use events and our logging instead
-    autoUpdater.logger = {
-      info: () => {},
-      warn: () => {},
-      error: () => {},
-    }
+    autoUpdater.allowDowngrade = false
+    autoUpdater.autoDownload = false
+
+    autoUpdater.logger = ElectronLog
+    autoUpdater.logger.transports.file.level = 'info'
+
     autoUpdater.on('checking-for-update', () => {
       this.emit('checking-for-update')
     })
     autoUpdater.on('update-available', (info : any) => {
-      this.emit('update-available')
+      if (!dialogs) {
+        console.warn('dialogs not set')
+        return null
+      }
+      
+      const {releaseName, version } = info
+      dialogs.displayUpdateFoundDialog(releaseName, version, async (shouldInstall : boolean) => {
+        // isPackaged is a safe guard for https://electronjs.org/docs/api/auto-updater#macos
+        // "Note: Your application must be signed for automatic updates on macOS. This is a requirement of Squirrel.Mac"
+        // if(!this.isElectron || !isPackaged()) {
+        //   console.warn('Update for non-signed apps is not implemented.')          
+        //   return null; 
+        // }
+
+        if(shouldInstall) {
+          console.log('Starting update download.')
+          // TODO check if we can use UpdateInfo instead
+          const cancellationToken = new CancellationToken()
+          await autoUpdater.downloadUpdate(cancellationToken)
+        } else {
+          console.log('Update ignored by user.')
+        }
+      })
     })
+
     autoUpdater.on('update-not-available', (info : any) => {
-      this.emit('update-not-available')
+      // this.emit('update-not-available')
+      dialogs.displayUpToDateDialog()
     })
+    
     autoUpdater.on('error', (err : Error) => {
-      this.emit('error', err)
+      // this.emit('error', err)
+      dialogs.displayUpdateError(err)
     })
+    
     autoUpdater.on('download-progress', (progressObj : any) => {
     })
+    
     autoUpdater.on('update-downloaded', (info : any) => {
-      this.emit('update-downloaded')
+      // this.emit('update-downloaded')
+      autoUpdater.quitAndInstall()
     })
   }
 
@@ -139,37 +168,19 @@ export default class AppManager extends RepoBase{
   }
 
   private startUpdateRoutine(intervalMs : number){
+    // currently only implemented for electron updater: app updater uses hot loader
+    if(!this.isElectron) return null
+
     if (this.checkUpdateHandler) {
       throw new Error('Update routine was started multiple times')
     }
-    let errorCounter = 0
 
     const check = async () => {
-      console.log('checking for updates')
-
-
-      let result = await this.checkForUpdatesAndNotify()
-
-      /*
-      let { latest } = await this.checkForUpdates()
-      if (latest && latest.version) {
-        console.log('update found: downloading ', latest.version);
-        try {
-          let download = await this.download(latest)
-
-        } catch (error) {
-          errorCounter++
-          console.error(error)
-        }
-      }
-      */
+      await autoUpdater.checkForUpdates()
     }
 
-    // currently only implemented for electron updater: app updater uses hot loader
-    if(this.isElectron) {
-      check()
-      this.checkUpdateHandler = setInterval(check, intervalMs)
-    }
+    check()
+    this.checkUpdateHandler = setInterval(check, intervalMs)
   }
 
   async checkForUpdates() : Promise<IUpdateInfo> {
