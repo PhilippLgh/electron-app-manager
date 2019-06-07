@@ -6,10 +6,7 @@ export class ElectronDialogs {
     dialog.showMessageBox({
       title: 'Update available',
       buttons: ['Ok', 'Cancel'],
-      message: `
-      Update found: ${name} (v${version}) 
-      Press "Ok" to download it in the background.
-      `
+      message: `Update found: ${name} (v${version}). Press "Ok" to download it in the background.`
     }, 
     (response : number) => {
       // response: Number - The index of the button that was clicked
