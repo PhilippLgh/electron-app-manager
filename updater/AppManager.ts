@@ -73,8 +73,6 @@ export default class AppManager extends RepoBase{
       this.cache = new Cache(process.cwd())
     }
 
-    this.checkForUpdates = this.checkForUpdates.bind(this)
-
     // order important: needs to be set before auto update routine
     if(electron){
       this.isElectron = electron
@@ -268,46 +266,6 @@ export default class AppManager extends RepoBase{
     }
   }
 
-  async checkForUpdatesAndNotify(showNoUpdate = false) {
-    // isPackaged is a safe guard for
-    // https://electronjs.org/docs/api/auto-updater#macos
-    // "Note: Your application must be signed for automatic updates on macOS. This is a requirement of Squirrel.Mac"
-    if(this.isElectron && isPackaged()) {
-      const {updateAvailable, latest} = await this.checkForUpdates()
-      if(updateAvailable && latest) {
-        if(dialogs) {
-          let {displayName, version} = latest
-          dialogs.displayUpdateFoundDialog(displayName, version, async (shouldInstall : boolean) => {
-            if(shouldInstall) {
-              // TODO check if we can use UpdateInfo instead
-              const cancellationToken = new CancellationToken()
-              try {
-                autoUpdater.once('update-downloaded', () => {
-                  autoUpdater.quitAndInstall()
-                })
-                await autoUpdater.downloadUpdate(cancellationToken)
-              } catch (error) {
-                dialogs.displayUpdateError(error)                
-              }
-              try {
-                // autoUpdater.quitAndInstall() 
-              } catch (error) {
-                dialogs.displayUpdateError(error)                
-              }
-            } else {
-              console.log('user ignored update')
-            }
-          })
-        }
-      } else {
-        if (showNoUpdate) {
-          dialogs.displayUpToDateDialog()
-        }
-      }
-    } else {
-      throw new Error('not implemented')
-    }
-  }
 
   async getCachedReleases(){
     return this.cache.getReleases()
