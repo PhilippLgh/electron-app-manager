@@ -26,10 +26,8 @@ export class ElectronDialogs {
       title: 'Update Error',
       type: 'error',
       cancelId: -1,
-      message: `
-      An error occurred during update: 
-      ${err ? err.message : '<unknown error>'}
-      `
+      message: `An error occurred during update: 
+` + `${err ? err.message : '<unknown error>'}`
     }, 
     (response : number) => {
 
