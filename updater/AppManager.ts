@@ -9,7 +9,6 @@ import { getRepository } from './repositories'
 import ModuleRegistry from './ModuleRegistry'
 import { getEthpkg, isElectron, isPackaged } from './util'
 import { pkgsign } from 'ethpkg'
-import ElectronLog from 'electron-log'
 
 
 let autoUpdater : any, CancellationToken : any = null
@@ -93,9 +92,6 @@ export default class AppManager extends RepoBase{
     autoUpdater.allowDowngrade = false
     autoUpdater.autoDownload = false
 
-    autoUpdater.logger = ElectronLog
-    autoUpdater.logger.transports.file.level = 'info'
-
     autoUpdater.on('checking-for-update', () => {
       this.emit('checking-for-update')
     })
@@ -109,10 +105,10 @@ export default class AppManager extends RepoBase{
       dialogs.displayUpdateFoundDialog(releaseName, version, async (shouldInstall : boolean) => {
         // isPackaged is a safe guard for https://electronjs.org/docs/api/auto-updater#macos
         // "Note: Your application must be signed for automatic updates on macOS. This is a requirement of Squirrel.Mac"
-        // if(!this.isElectron || !isPackaged()) {
-        //   console.warn('Update for non-signed apps is not implemented.')          
-        //   return null; 
-        // }
+        if(!this.isElectron || !isPackaged()) {
+          console.warn('Update for non-signed apps is not implemented.')          
+          return null; 
+        }
 
         if(shouldInstall) {
           console.log('Starting update download.')
