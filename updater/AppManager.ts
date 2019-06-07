@@ -147,7 +147,6 @@ export default class AppManager extends RepoBase{
     const check = async () => {
       console.log('checking for updates')
 
-
       let result = await this.checkForUpdatesAndNotify()
 
       /*
@@ -170,6 +169,13 @@ export default class AppManager extends RepoBase{
       check()
       this.checkUpdateHandler = setInterval(check, intervalMs)
     }
+  }
+
+  cancelUpdateRoutine() {
+    if(!this.checkUpdateHandler) {
+      return
+    }
+    clearInterval(this.checkUpdateHandler)
   }
 
   async checkForUpdates() : Promise<IUpdateInfo> {
@@ -261,41 +267,54 @@ export default class AppManager extends RepoBase{
     // isPackaged is a safe guard for
     // https://electronjs.org/docs/api/auto-updater#macos
     // "Note: Your application must be signed for automatic updates on macOS. This is a requirement of Squirrel.Mac"
-    if(this.isElectron && isPackaged()) {
-      const {updateAvailable, latest} = await this.checkForUpdates()
-      if(updateAvailable && latest) {
-        if(dialogs) {
-          let {displayName, version} = latest
-          dialogs.displayUpdateFoundDialog(displayName, version, async (shouldInstall : boolean) => {
-            if(shouldInstall) {
-              // TODO check if we can use UpdateInfo instead
-              const cancellationToken = new CancellationToken()
-              try {
-                autoUpdater.once('update-downloaded', () => {
-                  autoUpdater.quitAndInstall()
-                })
-                await autoUpdater.downloadUpdate(cancellationToken)
-              } catch (error) {
-                dialogs.displayUpdateError(error)                
-              }
-              try {
-                // autoUpdater.quitAndInstall() 
-              } catch (error) {
-                dialogs.displayUpdateError(error)                
-              }
-            } else {
-              console.log('user ignored update')
-            }
-          })
-        }
-      } else {
-        if (showNoUpdate) {
-          dialogs.displayUpToDateDialog()
-        }
-      }
-    } else {
-      throw new Error('not implemented')
+    if (!isPackaged()) {
+      console.log('updater cannot be executed on unsigned applications - routine cancelled')
+      this.cancelUpdateRoutine()
+      return
     }
+
+    // updater works only for shell
+    if (!this.isElectron) {
+      return
+    }
+
+    const {updateAvailable, latest} = await this.checkForUpdates()
+    if (!updateAvailable) {
+      if (showNoUpdate && dialogs) {
+        dialogs.displayUpToDateDialog()
+      }
+      return
+    }
+
+    if (!latest) {
+      if (showNoUpdate && dialogs) {
+        dialogs.displayUpToDateDialog()
+      }
+      return
+    }
+
+    if (!dialogs) {
+      // TODO handle without dialog
+      return
+    }
+
+    let {displayName, version} = latest
+    dialogs.displayUpdateFoundDialog(displayName, version, async (shouldInstall : boolean) => {
+      if(!shouldInstall) {
+        console.log('user ignored update')
+        return
+      }
+      // TODO check if we can use UpdateInfo instead
+      const cancellationToken = new CancellationToken()
+      try {
+        autoUpdater.once('update-downloaded', () => {
+          autoUpdater.quitAndInstall()
+        })
+        await autoUpdater.downloadUpdate(cancellationToken)
+      } catch (error) {
+        dialogs.displayUpdateError(error)                
+      }
+    })
   }
 
   async getCachedReleases(){
