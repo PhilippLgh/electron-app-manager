@@ -17,7 +17,6 @@ if(isElectron()) {
   try {
     let eu = require("electron-updater")
     autoUpdater = eu.autoUpdater
-    autoUpdater.allowDowngrade = false
     CancellationToken = eu.CancellationToken
     dialogs = require('./electron/Dialog').ElectronDialogs
   } catch (error) {
@@ -82,13 +81,18 @@ export default class AppManager extends RepoBase{
     }
 
     if(auto){
+      // currently auto-update only implemented for electron updater: app updater uses hot loader
+      if(!this.isElectron) {
+        return
+      }
+
       if (intervalMins <= 5 || intervalMins > (24 * 60)) {
         throw new Error(`Interval ${intervalMins} (min) is unreasonable or not within api limits`)
       }
       let intervalMs = intervalMins * 60 * 1000
-      this.startUpdateRoutine(intervalMs)
+      // start update routine
+      this.checkUpdateHandler = setInterval(this.checkForUpdatesAndNotify, intervalMs)
     }
-
   }
 
   private setupAutoUpdater () {
@@ -98,6 +102,8 @@ export default class AppManager extends RepoBase{
       warn: () => {},
       error: () => {},
     }
+    autoUpdater.allowDowngrade = false
+    autoUpdater.autoDownload = false
     autoUpdater.on('checking-for-update', () => {
       this.emit('checking-for-update')
     })
@@ -109,6 +115,8 @@ export default class AppManager extends RepoBase{
     })
     autoUpdater.on('error', (err : Error) => {
       this.emit('error', err)
+      if (!dialogs) {return}
+      dialogs.displayUpdateError(err)
     })
     autoUpdater.on('download-progress', (progressObj : any) => {
     })
@@ -136,39 +144,6 @@ export default class AppManager extends RepoBase{
     hotLoaded.repository = SOURCES.HOTLOADER
     return hotLoaded
     */
-  }
-
-  private startUpdateRoutine(intervalMs : number){
-    if (this.checkUpdateHandler) {
-      throw new Error('Update routine was started multiple times')
-    }
-    let errorCounter = 0
-
-    const check = async () => {
-      console.log('checking for updates')
-
-      let result = await this.checkForUpdatesAndNotify()
-
-      /*
-      let { latest } = await this.checkForUpdates()
-      if (latest && latest.version) {
-        console.log('update found: downloading ', latest.version);
-        try {
-          let download = await this.download(latest)
-
-        } catch (error) {
-          errorCounter++
-          console.error(error)
-        }
-      }
-      */
-    }
-
-    // currently only implemented for electron updater: app updater uses hot loader
-    if(this.isElectron) {
-      check()
-      this.checkUpdateHandler = setInterval(check, intervalMs)
-    }
   }
 
   cancelUpdateRoutine() {
@@ -264,6 +239,12 @@ export default class AppManager extends RepoBase{
   }
 
   async checkForUpdatesAndNotify(showNoUpdate = false) {
+
+    // updater works only for shell
+    if (!this.isElectron) {
+      return
+    }
+
     // isPackaged is a safe guard for
     // https://electronjs.org/docs/api/auto-updater#macos
     // "Note: Your application must be signed for automatic updates on macOS. This is a requirement of Squirrel.Mac"
@@ -273,8 +254,9 @@ export default class AppManager extends RepoBase{
       return
     }
 
-    // updater works only for shell
-    if (!this.isElectron) {
+    if (!dialogs) {
+      // TODO handle without dialog
+      console.warn('dialogs not set')
       return
     }
 
@@ -293,11 +275,6 @@ export default class AppManager extends RepoBase{
       return
     }
 
-    if (!dialogs) {
-      // TODO handle without dialog
-      return
-    }
-
     let {displayName, version} = latest
     dialogs.displayUpdateFoundDialog(displayName, version, async (shouldInstall : boolean) => {
       if(!shouldInstall) {
@@ -312,7 +289,7 @@ export default class AppManager extends RepoBase{
         })
         await autoUpdater.downloadUpdate(cancellationToken)
       } catch (error) {
-        dialogs.displayUpdateError(error)                
+        dialogs.displayUpdateError(error)            
       }
     })
   }
