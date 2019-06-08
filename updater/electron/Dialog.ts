@@ -4,11 +4,11 @@ import { dialog } from 'electron'
 export class ElectronDialogs {
   static displayUpdateFoundDialog(name:string, version:string, callback: Function) {
     dialog.showMessageBox({
-      title: 'Checking for updates',
-      buttons: ['ok', 'cancel'],
+      title: 'Update available',
+      buttons: ['Ok', 'Cancel'],
       message: `
-      Update found: ${name} (v${version}) 
-      Press "OK" to download in background
+      Update found: ${name} (v${version}). 
+      Press "Ok" to download it in the background.
       `
     }, 
     (response : number) => {
@@ -28,7 +28,6 @@ export class ElectronDialogs {
     dialog.showMessageBox({
       title: 'Update Error',
       type: 'error',
-      cancelId: -1,
       message: `
       An error occurred during update: 
       ${err ? err.message : '<unknown error>'}
