@@ -92,6 +92,9 @@ export default class AppManager extends RepoBase{
       let intervalMs = intervalMins * 60 * 1000
       // start update routine
       this.checkUpdateHandler = setInterval(this.checkForUpdatesAndNotify, intervalMs)
+
+      // first run with zero delay
+      this.checkForUpdatesAndNotify()
     }
   }
 
