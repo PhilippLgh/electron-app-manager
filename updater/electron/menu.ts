@@ -52,10 +52,10 @@ const isRemoteSource = (source : string) => source && source !== SOURCES.CACHE &
 
 
 export const createSwitchVersionMenu = (releases : any, onSwitchVersion : Function, options = {
-  limit: 15
+  limit: 15 // limit per channel
 }) => {
   const { limit } = options
-  releases = releases.slice(0, Math.min(releases.length - 1, limit))
+  releases = releases.slice(0, Math.min(releases.length - 1, 100))
 
   // create it this way to get "stable" order
   let channelMenu : {[index: string] : Object[] } = {
@@ -95,9 +95,11 @@ export const createSwitchVersionMenu = (releases : any, onSwitchVersion : Functi
       }
     }
 
-    channelMenu[channel].push(releaseItem)
+    if (channelMenu[channel].length < limit) {
+      channelMenu[channel].push(releaseItem)
+    }
 
-  });
+  })
 
   let channels = Object.keys(channelMenu)
 
