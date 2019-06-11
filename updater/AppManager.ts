@@ -93,8 +93,11 @@ export default class AppManager extends RepoBase{
       // start update routine
       this.checkUpdateHandler = setInterval(this.checkForUpdatesAndNotify, intervalMs)
 
-      // first run with zero delay
-      this.checkForUpdatesAndNotify()
+      // first run with small delay so that dialog doesn't block app start
+      setTimeout(() => {
+        this.checkForUpdatesAndNotify()
+      }, 1 * 60 * 1000)
+      
     }
   }
 
