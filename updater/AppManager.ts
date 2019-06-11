@@ -107,6 +107,7 @@ export default class AppManager extends RepoBase{
     }
     autoUpdater.allowDowngrade = false
     autoUpdater.autoDownload = false
+    // autoUpdater.autoInstallOnAppQuit = false
     autoUpdater.on('checking-for-update', () => {
       this.emit('checking-for-update')
     })
