@@ -24,6 +24,12 @@ export class ElectronDialogs {
       message: 'You are using the latest version'
     })
   }
+  static displayRestartForUpdateDialog(callback : (response: number, checkboxChecked: boolean) => void) {
+    dialog.showMessageBox({
+      title: 'Install Updates',
+      message: 'Updates downloaded, application will be quit for update...'
+    }, callback)
+  }
   static displayUpdateError(err: Error) {
     dialog.showMessageBox({
       title: 'Update Error',
