@@ -290,10 +290,10 @@ export default class AppManager extends RepoBase{
       const cancellationToken = new CancellationToken()
       try {
         await autoUpdater.downloadUpdate(cancellationToken)
-        // https://github.com/electron-userland/electron-builder/issues/3402#issuecomment-436913714
-        // "you need to wrap quitAndInstall in setImmediate if called from dialog"
-        setImmediate(() => {
-          autoUpdater.quitAndInstall();
+        dialogs.displayRestartForUpdateDialog(() => {
+          // https://github.com/electron-userland/electron-builder/issues/3402#issuecomment-436913714
+          // "you need to wrap quitAndInstall in setImmediate if called from dialog"
+          setImmediate(() => autoUpdater.quitAndInstall())
         })
       } catch (error) {
         dialogs.displayUpdateError(error)            
