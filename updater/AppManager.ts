@@ -92,6 +92,9 @@ export default class AppManager extends RepoBase{
       let intervalMs = intervalMins * 60 * 1000
       // start update routine
       this.checkUpdateHandler = setInterval(this.checkForUpdatesAndNotify, intervalMs)
+
+      // first run with zero delay
+      this.checkForUpdatesAndNotify()
     }
   }
 
@@ -153,66 +156,72 @@ export default class AppManager extends RepoBase{
     clearInterval(this.checkUpdateHandler)
   }
 
+  async checkForElectronUpdates() : Promise<IUpdateInfo> {
+    // doesn't work in dev mode without 'dev-app-update.yml': 
+    // https://github.com/electron-userland/electron-builder/issues/1505
+    try {
+
+      // use electron's autoUpdater to check for updates
+      // https://electronjs.org/docs/api/auto-updater#autoupdatercheckforupdates
+      const updateCheckResult = await autoUpdater.checkForUpdates()
+      
+      // no updates available
+      if(!updateCheckResult || !updateCheckResult.downloadPromise) {
+        console.log('update not found')
+        return {
+          updateAvailable: false,
+          source: SOURCES.ELECTRON,
+          latest: null
+        } 
+      }
+
+      // https://www.electron.build/auto-update#updateinfo
+      let { updateInfo } = updateCheckResult
+      console.log('update found', updateInfo)
+      let {
+        version,
+        releaseName,
+        releaseNotes,
+        releaseDate,
+        stagingPercentage
+      } = updateInfo
+      return {
+        updateAvailable: true, // for the moment, this info is sufficient
+        source: SOURCES.ELECTRON,
+        // FIXME properly convert electron-builders updateInfo to IRelease
+        latest: {
+          name: releaseName,
+          displayName: releaseName,
+          version,
+          channel: 'production',
+          fileName: '',
+          commit: '',
+          size: 0,
+          publishedDate: releaseDate,
+          tag: '',
+          location: '',
+          repository: '',
+          error: undefined,
+          remote: true
+        } 
+      } 
+
+    } catch (error) {
+      console.log('electron-builder updater error' /*, error*/)
+    }
+
+    return {
+      updateAvailable: false,
+      source: SOURCES.ELECTRON,
+      latest: null
+    }
+  }
   async checkForUpdates() : Promise<IUpdateInfo> {
 
     if(this.isElectron) {
-      // doesn't work in dev mode without 'dev-app-update.yml': 
-      // https://github.com/electron-userland/electron-builder/issues/1505
-      try {
-        const updateCheckResult = await autoUpdater.checkForUpdates()
-        
-        // no updates available
-        if(!updateCheckResult || !updateCheckResult.downloadPromise) {
-          console.log('update not found')
-          return {
-            updateAvailable: false,
-            source: SOURCES.ELECTRON,
-            latest: null
-          } 
-        }
-
-        // https://www.electron.build/auto-update#updateinfo
-        let { updateInfo } = updateCheckResult
-        console.log('update found', updateInfo)
-        let {
-          version,
-          releaseName,
-          releaseNotes,
-          releaseDate,
-          stagingPercentage
-        } = updateInfo
-        return {
-          updateAvailable: true, // for the moment, this info is sufficient
-          source: SOURCES.ELECTRON,
-          // FIXME properly convert electron-builders updateInfo to IRelease
-          latest: {
-            name: releaseName,
-            displayName: releaseName,
-            version,
-            channel: 'production',
-            fileName: '',
-            commit: '',
-            size: 0,
-            publishedDate: releaseDate,
-            tag: '',
-            location: '',
-            repository: '',
-            error: undefined,
-            remote: true
-          } 
-        } 
-
-      } catch (error) {
-        console.log('electron-builder updater error' /*, error*/)
-      }
-
-      return {
-        updateAvailable: false,
-        source: SOURCES.ELECTRON,
-        latest: null
-      }
+      return this.checkForElectronUpdates()
     }
-
+    // else: ui / app updater
     const latest = await this.getLatest()
     if(latest === null){
       return {
