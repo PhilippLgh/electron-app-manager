@@ -166,8 +166,11 @@ export default class AppManager extends RepoBase{
       const updateCheckResult = await autoUpdater.checkForUpdates()
       
       // no updates available
-      if(!updateCheckResult || !updateCheckResult.downloadPromise) {
-        console.log('update not found')
+      // FIXME hack: we are using the presence of the cancellationToken to determine if an update is available according to
+      // https://github.com/electron-userland/electron-builder/blob/master/packages/electron-updater/src/AppUpdater.ts#L382
+      // we could also use `downloadPromise` which would be null though if auto-download is set to false
+      if(!updateCheckResult || !updateCheckResult.cancellationToken) {
+        console.log('electron update not found', updateCheckResult)
         return {
           updateAvailable: false,
           source: SOURCES.ELECTRON,
@@ -270,6 +273,8 @@ export default class AppManager extends RepoBase{
     }
 
     const {updateAvailable, latest} = await this.checkForUpdates()
+
+    // console.log('update info:', updateAvailable, latest)
 
     // display "no update found" dialog if there is no update or "latest" version
     if (!updateAvailable || !latest) {
