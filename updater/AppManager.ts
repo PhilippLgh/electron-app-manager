@@ -247,7 +247,7 @@ export default class AppManager extends RepoBase{
     }
   }
 
-  async checkForUpdatesAndNotify(showNoUpdate = false) {
+  async checkForUpdatesAndNotify(showNoUpdateDialog = false) {
 
     // updater works only for shell
     if (!this.isElectron) {
@@ -270,33 +270,31 @@ export default class AppManager extends RepoBase{
     }
 
     const {updateAvailable, latest} = await this.checkForUpdates()
-    if (!updateAvailable) {
-      if (showNoUpdate && dialogs) {
+
+    // display "no update found" dialog if there is no update or "latest" version
+    if (!updateAvailable || !latest) {
+      if (dialogs && showNoUpdateDialog) {
         dialogs.displayUpToDateDialog()
       }
       return
     }
 
-    if (!latest) {
-      if (showNoUpdate && dialogs) {
-        dialogs.displayUpToDateDialog()
-      }
-      return
-    }
-
+    // there is a later version: use info from latest for "update found" dialog
     let {displayName, version} = latest
     dialogs.displayUpdateFoundDialog(displayName, version, async (shouldInstall : boolean) => {
       if(!shouldInstall) {
-        console.log('user ignored update')
+        console.log('user skipped update')
         return
       }
       // TODO check if we can use UpdateInfo instead
       const cancellationToken = new CancellationToken()
       try {
-        autoUpdater.once('update-downloaded', () => {
-          autoUpdater.quitAndInstall()
-        })
         await autoUpdater.downloadUpdate(cancellationToken)
+        // https://github.com/electron-userland/electron-builder/issues/3402#issuecomment-436913714
+        // "you need to wrap quitAndInstall in setImmediate if called from dialog"
+        setImmediate(() => {
+          autoUpdater.quitAndInstall();
+        })
       } catch (error) {
         dialogs.displayUpdateError(error)            
       }
