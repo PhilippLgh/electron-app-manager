@@ -9,6 +9,7 @@ import { getRepository } from './repositories'
 import ModuleRegistry from './ModuleRegistry'
 import { getEthpkg, isElectron, isPackaged } from './util'
 import { pkgsign } from 'ethpkg'
+import { downloadJson } from './lib/downloader'
 
 
 let autoUpdater : any, CancellationToken : any = null
@@ -443,6 +444,10 @@ export default class AppManager extends RepoBase{
   }
   async extract(release : IRelease){
     return this.cache.extract(release)
+  }
+
+  static async downloadJson(_url : string) {
+    return downloadJson(_url)
   }
 
 }
