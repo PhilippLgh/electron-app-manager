@@ -22,10 +22,11 @@ class Github extends RepoBase implements IRemoteRepository {
   private owner: string;
   private repo: string;
   private prefixFilter? : string
+  private filter: Function;
 
   public name: string = 'Github';
 
-  constructor(repoUrl : string, prefixFilter? : string){
+  constructor(repoUrl : string, options : any = {}){
     super()
     // WARNING: For unauthenticated requests, the rate limit allows for up to 60 requests per hour.
     if (process.env.GITHUB_TOKEN && typeof process.env.GITHUB_TOKEN === 'string') {
@@ -37,7 +38,8 @@ class Github extends RepoBase implements IRemoteRepository {
       this.client = new GitHub()
     }
 
-    this.prefixFilter = prefixFilter
+    this.filter = options && options.filter
+    this.prefixFilter = options && options.prefix
     this._repositoryUrl = repoUrl;
     let parts = repoUrl.split('/')
     let l = parts.length 
@@ -130,6 +132,11 @@ class Github extends RepoBase implements IRemoteRepository {
       version,
       channel
     }))
+
+    if(this.filter){
+      // @ts-ignore
+      releases = releases.filter(this.filter) // includes filter
+    }
     
     // console.log('releases of assets', releases)
 
