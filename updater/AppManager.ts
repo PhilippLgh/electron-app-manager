@@ -37,6 +37,7 @@ interface IUpdaterOptions {
   electron?: boolean,
   intervalMins?: number,
   cacheDir?: string;
+  searchPaths?: string[],
   downloadDir?: string;
   modifiers? : { [key : string] : Function }
   filter?: Function,
@@ -53,6 +54,7 @@ export default class AppManager extends RepoBase{
   
   remote: IRemoteRepository;
   cache: Cache;
+  private caches: Cache[];
   checkUpdateHandler: any; // IntervalHandler
   private menuBuilder: MenuBuilder;
   private isElectron: boolean = false;
@@ -60,17 +62,27 @@ export default class AppManager extends RepoBase{
   /**
    *
    */
-  constructor({ repository, auto = true, electron = false, intervalMins = 15, cacheDir, modifiers, filter, prefix } : IUpdaterOptions) {
+  constructor({ repository, auto = true, electron = false, intervalMins = 15, cacheDir, searchPaths = [], modifiers, filter, prefix } : IUpdaterOptions) {
     super();
 
     this.remote = getRepository(repository, modifiers, filter, prefix)
 
     this.menuBuilder = new MenuBuilder(this)
 
+    // there should only be one cache directory so that some things
+    // can work (e.g. download) automatically. However, we might need to look for 
+    // packages in multiple locations. This is what searchPaths is for
     if(cacheDir){
       this.cache = new Cache(cacheDir)
     } else {
       this.cache = new Cache(process.cwd())
+    }
+
+    this.caches = [this.cache]
+    if(searchPaths){
+      searchPaths.forEach(searchPath => {
+        this.caches.push(new Cache(searchPath))
+      })
     }
 
     this.checkForUpdates = this.checkForUpdates.bind(this)
@@ -82,11 +94,6 @@ export default class AppManager extends RepoBase{
     }
 
     if(auto){
-      // currently auto-update only implemented for electron updater: app updater uses hot loader
-      if(!this.isElectron) {
-        return
-      }
-
       if (intervalMins <= 5 || intervalMins > (24 * 60)) {
         throw new Error(`Interval ${intervalMins} (min) is unreasonable or not within api limits`)
       }
@@ -257,8 +264,17 @@ export default class AppManager extends RepoBase{
 
   async checkForUpdatesAndNotify(showNoUpdateDialog = false) {
 
-    // updater works only for shell
     if (!this.isElectron) {
+      this.emit('checking-for-update')
+      const {updateAvailable, latest} = await this.checkForUpdates()
+      // in case of application packages the default is to
+      // just silently download updates in the background
+      if (updateAvailable && latest !== null) {
+        this.emit('update-available', latest)
+        this.download(latest)
+      } else {
+        this.emit('update-not-available')
+      }
       return
     }
 
@@ -329,7 +345,12 @@ export default class AppManager extends RepoBase{
     return allReleases.sort(this.compareVersions)
   }
 
-  async getLatestCached(){
+  async getLatestCached(filter? : string){
+    if (this.caches) {
+      let promises = this.caches.map(c => c.getLatest(filter))
+      let latest = await Promise.all(promises)
+      return this._getLatest(latest)
+    }
     return this.cache.getLatest()
   }
 
@@ -338,21 +359,24 @@ export default class AppManager extends RepoBase{
   }
 
   async getLatest(filter? : string) : Promise<IRelease | null>{
-    const latestCached = await this.cache.getLatest(filter)
+    const latestCached = await this.getLatestCached(filter)
     const latestRemote = await this.remote.getLatest(filter)
     const latestHotLoaded = this.hotLoadedApp
+    return this._getLatest([latestCached, latestHotLoaded, latestRemote])
+  }
 
+  private _getLatest(_releases: Array<IRelease | null>){
     // remove null, undefined
-    let latestReleases = [latestCached, latestHotLoaded, latestRemote].filter(this.notEmpty)
+    let releases = [..._releases].filter(this.notEmpty)
 
-    if(latestReleases.length <= 0) {
+    if(releases.length <= 0) {
       return null
     }
 
-    latestReleases = latestReleases.sort(this.compareVersions)
+    releases = releases.sort(this.compareVersions)
 
     // to determine from where the latest release comes use the repository tag on the release
-    return latestReleases[0]
+    return releases[0]
   }
 
   async download(release : IRelease, {
@@ -388,6 +412,7 @@ export default class AppManager extends RepoBase{
         fs.writeFileSync(detachedMetadataPath, JSON.stringify(release, null, 2))
       }
       // TODO patch package metadata if it doesn't exist
+      // TODO write to .temp and rename to minimize risk of corrupted downloads
       fs.writeFileSync(location, packageData)
     } else{
       this.emit('update-downloaded', release)
