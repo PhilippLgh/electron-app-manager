@@ -81,7 +81,11 @@ export default class AppManager extends RepoBase{
     this.caches = [this.cache]
     if(searchPaths){
       searchPaths.forEach(searchPath => {
-        this.caches.push(new Cache(searchPath))
+        try {
+          this.caches.push(new Cache(searchPath))
+        } catch (error) {
+          console.log('WARNING: could not search in search path: '+searchPath)
+        }
       })
     }
 
