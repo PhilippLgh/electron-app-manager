@@ -186,6 +186,16 @@ export default class AppManager extends RepoBase{
     clearInterval(this.checkUpdateHandler)
   }
 
+  async clearCache() {
+    if (this.caches) {
+      for (const cache of this.caches) {
+        await cache.clear()        
+      }
+    } else {
+      return this.cache.clear()
+    }
+  }
+
   async checkForElectronUpdates() : Promise<IUpdateInfo> {
     // doesn't work in dev mode without 'dev-app-update.yml': 
     // https://github.com/electron-userland/electron-builder/issues/1505

@@ -22,6 +22,13 @@ class Cache extends RepoBase implements IRepository {
     this.cacheDirPath = cacheDirPath
   }
 
+  async clear() {
+    const files = fs.readdirSync(this.cacheDirPath)
+    for (const file of files) {
+      fs.unlinkSync(path.join(this.cacheDirPath, file))
+    }
+  }
+
   async toRelease(fileName : string){
     const name = path.parse(fileName).name
     const location = path.join(this.cacheDirPath, fileName)
