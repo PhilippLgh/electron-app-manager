@@ -50,6 +50,20 @@ const SOURCES = {
   ELECTRON: 'Electron'
 }
 
+interface IDownloadOptions {
+  writePackageData?: boolean, 
+  writeDetachedMetadata?: boolean, 
+  targetDir?: string,
+  onProgress?: (progress : number) => void
+}
+
+interface IFetchOptions {
+  filter? : string, 
+  download?: false, // will download the release to cache if not specified otherwise
+  downloadOptions?: IDownloadOptions,
+  verify?: false
+}
+
 export default class AppManager extends RepoBase{
   
   remote: IRemoteRepository;
@@ -358,15 +372,31 @@ export default class AppManager extends RepoBase{
     return this.cache.getLatest()
   }
 
-  async getLatestRemote(filter? : string){
-    return await this.remote.getLatest(filter)
+  async getLatestRemote(options : IFetchOptions){
+    let { filter, download, verify } = options
+    let release = await this.remote.getLatest(filter)
+    if (release === null) {
+      return null
+    }
+    const { name } = release
+    if (release && download) {
+      const { downloadOptions } = options
+      const downloadResult = await this.download(release, downloadOptions)
+      if (downloadResult && verify && !downloadResult.verificationResult) {
+        throw new Error(`Error: External package ${name} has no verification info.`)
+      }
+      return downloadResult
+    }
+    return release
   }
 
-  async getLatest(filter? : string) : Promise<IRelease | null>{
+  async getLatest(options : IFetchOptions = {}) : Promise<IRelease | null>{
+    const { filter } = options
     const latestCached = await this.getLatestCached(filter)
-    const latestRemote = await this.remote.getLatest(filter)
+    const latestRemote = await this.getLatestRemote(options)
     const latestHotLoaded = this.hotLoadedApp
-    return this._getLatest([latestCached, latestHotLoaded, latestRemote])
+    const latest = this._getLatest([latestCached, latestHotLoaded, latestRemote])
+    return latest
   }
 
   private _getLatest(_releases: Array<IRelease | null>){
@@ -388,7 +418,7 @@ export default class AppManager extends RepoBase{
     writeDetachedMetadata = true, 
     targetDir = this.cache.cacheDirPath,
     onProgress = (progress : number) => {}
-  } = {} ){
+  } : IDownloadOptions = {} ){
 
     let pp = 0;
     let _onProgress = (p : number) => {
