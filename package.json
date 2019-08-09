@@ -23,7 +23,7 @@
   "license": "ISC",
   "dependencies": {
     "@octokit/rest": "^16.27.0",
-    "electron-updater": "4.0.6",
+    "electron-updater": "4.1.2",
     "ethpkg": "^0.3.0",
     "openpgp": "^4.4.5",
     "semver": "^5.6.0",
