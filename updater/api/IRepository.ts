@@ -1,14 +1,26 @@
 import { IRelease, IInvalidRelease, IReleaseExtended } from './IRelease'
 
-export interface IReleaseOptions {
-  sort?: boolean | undefined,
-  filterInvalid?: boolean | undefined
+export interface IDownloadOptions {
+  writePackageData?: boolean, 
+  writeDetachedMetadata?: boolean, 
+  targetDir?: string,
+  onProgress?: (progress : number) => void
 }
+
+export interface IFetchOptions {
+  filter? : string,
+  sort?: boolean,
+  filterInvalid?: boolean, 
+  download?: boolean, // will download the release to cache if not specified otherwise
+  downloadOptions?: IDownloadOptions,
+  verify?: boolean
+}
+
 export interface IRepository {
 
   name : string;
   
-  getReleases(options? : IReleaseOptions): Promise<Array<(IRelease | IInvalidRelease)>>;
+  getReleases(options? : IFetchOptions): Promise<Array<(IRelease | IInvalidRelease)>>;
 
   getLatest(semverFilter? : string): Promise<IRelease | IReleaseExtended | null>;
 

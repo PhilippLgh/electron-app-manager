@@ -1,4 +1,4 @@
-import { IRemoteRepository } from './api/IRepository'
+import { IRemoteRepository, IFetchOptions, IDownloadOptions } from './api/IRepository'
 import Cache from './repositories/Cache'
 import { IRelease, IReleaseExtended, IInvalidRelease } from './api/IRelease'
 import fs from 'fs'
@@ -50,19 +50,8 @@ const SOURCES = {
   ELECTRON: 'Electron'
 }
 
-interface IDownloadOptions {
-  writePackageData?: boolean, 
-  writeDetachedMetadata?: boolean, 
-  targetDir?: string,
-  onProgress?: (progress : number) => void
-}
 
-interface IFetchOptions {
-  filter? : string, 
-  download?: false, // will download the release to cache if not specified otherwise
-  downloadOptions?: IDownloadOptions,
-  verify?: false
-}
+
 
 export default class AppManager extends RepoBase{
   
@@ -236,6 +225,7 @@ export default class AppManager extends RepoBase{
           name: releaseName,
           displayName: releaseName,
           version,
+          displayVersion: version,
           channel: 'production',
           fileName: '',
           commit: '',
@@ -359,13 +349,13 @@ export default class AppManager extends RepoBase{
     return this.cache.getReleases()
   }
 
-  async getRemoteReleases(){
-    return this.remote.getReleases()
+  async getRemoteReleases({sort = true} : IFetchOptions = {}){
+    return this.remote.getReleases({ sort })
   }
 
-  async getReleases(){
-    const cachedReleases = await this.cache.getReleases({sort : false})
-    const remoteReleases = await this.remote.getReleases({sort : false})
+  async getReleases(options? : IFetchOptions){
+    const cachedReleases = await this.cache.getReleases({ sort : false })
+    const remoteReleases = await this.getRemoteReleases({ sort : false })
     const allReleases = [
       ...cachedReleases,
       ...remoteReleases
