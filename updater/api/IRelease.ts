@@ -14,6 +14,10 @@ export interface IRelease extends IReleaseBase {
   commit: string | void,
   publishedDate: Date;
   version: string;
+  displayVersion: string,
+  platform?: string,
+  arch?: string,
+  isPrerelease?: boolean, 
   channel: string | void;
   size: Number;
   tag: string;
