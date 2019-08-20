@@ -1,5 +1,5 @@
 import { IRelease, IInvalidRelease, IReleaseExtended } from '../api/IRelease'
-import { IRemoteRepository, IReleaseOptions } from '../api/IRepository'
+import { IRemoteRepository, IFetchOptions } from '../api/IRepository'
 import RepoBase from '../api/RepoBase'
 import { download, downloadJson } from '../lib/downloader'
 
@@ -12,7 +12,7 @@ class Swarm extends RepoBase implements IRemoteRepository {
     super()
   }
 
-  getReleases(options?: IReleaseOptions | undefined): Promise<(IRelease | IInvalidRelease)[]> {
+  getReleases(options?: IFetchOptions | undefined): Promise<(IRelease | IInvalidRelease)[]> {
     throw new Error("Method not implemented.");
   }
 
@@ -25,6 +25,7 @@ class Swarm extends RepoBase implements IRemoteRepository {
       commit: undefined,
       publishedDate: new Date(),
       version: '1.0.0',
+      displayVersion: 'v1.0.0',
       channel: 'alpha',
       size: 100,
       tag: '1.0.0',
