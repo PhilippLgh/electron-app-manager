@@ -2,7 +2,7 @@ import { IRelease, IInvalidRelease, IMetadata, IReleaseExtended } from '../api/I
 import { IRemoteRepository } from '../api/IRepository'
 import RepoBase from '../api/RepoBase'
 import { download, downloadJson } from '../lib/downloader'
-import { getExtension, hasSupportedExtension } from '../util'
+import { getExtension, hasSupportedExtension, extractPlatform, extractArchitecture, simplifyVersion } from '../util'
 import path from 'path'
 import url from 'url'
 import semver from 'semver'
@@ -65,6 +65,10 @@ class Azure extends RepoBase implements IRemoteRepository {
     const md5 = Properties['Content-MD5'][0]
 
     const version = semver.clean( extractVersion(name) || '' ) || ''
+    const displayVersion = simplifyVersion(version)
+
+    const platform = extractPlatform(name)
+    const arch = extractArchitecture(name)
 
     let _release = {}
     // give client the chance to define their own parser
@@ -94,7 +98,10 @@ class Azure extends RepoBase implements IRemoteRepository {
     let release = {
       name,
       fileName,
-      version: version,
+      version,
+      displayVersion,
+      platform,
+      arch,
       tag: version,
       commit: undefined,
       size,

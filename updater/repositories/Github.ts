@@ -1,12 +1,12 @@
 import { IRelease, IInvalidRelease, IMetadata, IReleaseExtended } from '../api/IRelease'
-import { IRemoteRepository, IReleaseOptions } from '../api/IRepository'
+import { IRemoteRepository, IFetchOptions } from '../api/IRepository'
 import RepoBase from '../api/RepoBase'
 // @ts-ignore
 import { download, downloadJson } from '../lib/downloader'
 import semver from 'semver'
 import GitHub, { ReposListReleasesResponseItem } from '@octokit/rest'
 import path from 'path'
-import { isRelease, hasSupportedExtension } from '../util'
+import { isRelease, hasSupportedExtension, extractPlatform, extractArchitecture, simplifyVersion } from '../util'
 
 interface IAsset {
   name: string,
@@ -56,13 +56,18 @@ class Github extends RepoBase implements IRemoteRepository {
     tag_name,
     branch,
     version,
-    channel
+    displayVersion,
+    channel,
+    isPrerelease
   } : any) : IRelease | IInvalidRelease {
 
     const { name: assetName, browser_download_url: assetUrl, size, download_count } = asset
     const packageName = assetName && path.basename(assetName)
 
     const name = packageName || releaseName || tag_name
+
+    const platform = extractPlatform(name)
+    const arch = extractArchitecture(name)
 
     return {
       name,
@@ -72,6 +77,10 @@ class Github extends RepoBase implements IRemoteRepository {
       commit: branch,
       publishedDate: new Date(),
       version,
+      displayVersion,
+      platform,
+      arch,
+      isPrerelease,
       channel,
       size,
       tag: tag_name,
@@ -89,10 +98,12 @@ class Github extends RepoBase implements IRemoteRepository {
       target_commitish : branch
      } = releaseInfo
 
-
     const segments = tag_name.split('_')
     const versionTag = segments[0]
     const version = this.normalizeTag(versionTag);
+    const displayVersion = simplifyVersion(version)
+
+    const isPrerelease = releaseInfo.draft || releaseInfo.prerelease
 
     if(!semver.valid(version)) {
       return [{
@@ -103,6 +114,7 @@ class Github extends RepoBase implements IRemoteRepository {
 
     const prereleaseInfo = semver.prerelease(version)
     const channel = prereleaseInfo ? prereleaseInfo[0] : 'dev'
+
 
     // let metadata = releaseInfo.assets.find(release => release.name === 'metadata.json')
     if(!releaseInfo.assets){
@@ -130,7 +142,9 @@ class Github extends RepoBase implements IRemoteRepository {
       tag_name,
       branch,
       version,
-      channel
+      displayVersion,
+      channel,
+      isPrerelease
     }))
 
     if(this.filter){
@@ -203,7 +217,7 @@ class Github extends RepoBase implements IRemoteRepository {
   async getReleases({
     sort = true,
     filterInvalid = true
-  } : IReleaseOptions = {} ) : Promise<Array<(IRelease | IInvalidRelease)>> {
+  } : IFetchOptions = {} ) : Promise<Array<(IRelease | IInvalidRelease)>> {
     // FIXME use pagination
     try {
       let releaseInfo = await this.client.repos.listReleases({
