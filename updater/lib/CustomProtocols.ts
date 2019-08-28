@@ -5,39 +5,11 @@ import { request } from '../lib/downloader'
 import { pkgsign } from 'ethpkg'
 import protocol from '../abstraction/protocol'
 import ModuleRegistry from '../ModuleRegistry'
-import { createSwitchVersionMenu, createCheckUpdateMenu, createMenu } from '../electron/menu'
+import { md5 } from './hashes';
+import { findWebContentsByTitle } from '../util'
+// import { createSwitchVersionMenu, createCheckUpdateMenu, createMenu } from '../electron/menu'
 
-const findWebContentsByTitle = (windowTitle : string, callback: Function) => {
-  const { webContents } = require('electron')
-  let _webContents = webContents.getAllWebContents()
-
-  const assignListeners = (fun : Function) => {
-    _webContents.forEach(w => {
-      // @ts-ignore
-      w.on('page-title-updated', fun)
-    })
-  }
-
-  const removeListeners = (fun : Function) => {
-      // @ts-ignore
-      _webContents.forEach(w => {
-        // @ts-ignore
-        w.removeListener('page-title-updated', fun)
-      })
-  }
-
-  const rendererDetection = function({sender: webContents} : any, title : string) {
-    if (title === windowTitle) {
-      // found the webContents instance that is rendering the splash:
-      removeListeners(rendererDetection)
-      callback(webContents)
-    }
-  }
-
-  // we assign a listener to each webcontent to detect where the title changes
-  assignListeners(rendererDetection)
-
-}
+const scheme = 'package'
 
 // used for remote zip (experimental)
 async function getZipUrl(_url : string){
@@ -49,11 +21,7 @@ async function getZipUrl(_url : string){
   return _url
 }
 
-export const loadRemoteApp = async (repoUrl : string, queryArgs : any,  webContents : Electron.WebContents) => {
-
-  // 0. parse and remove query args as options
-  let targetVersion = (queryArgs && queryArgs.version) || 'latest'
-
+export const loadRemoteApp = async (repoUrl : string, targetVersion : string, onProgress = (app : any, progress : number) => {}) => {
   // 1. get repo for url
   const repo = getRepository(repoUrl)
 
@@ -93,22 +61,11 @@ export const loadRemoteApp = async (repoUrl : string, queryArgs : any,  webConte
   // 3. download specified version & update window
   let pp = 0
   const packageData = await repo.download(release, (progress : number) => {
-  let pn = Math.floor(progress * 100);
-  if (pn > pp) {
-    pp = pn
-    const changes = {
-      app,
-      progress: pp
+    let pn = Math.floor(progress * 100);
+    if (pn > pp) {
+      pp = pn
+      onProgress(app, pp)
     }
-    let dataString = JSON.stringify(changes)
-    webContents.executeJavaScript(`
-      try {
-        window.dispatchEvent(new CustomEvent('update', {detail: ${dataString} }));
-      } catch (error) {
-        console.error(error)
-      }
-    `)
-  }
   })
 
   // TODO implement caching strategy here
@@ -116,36 +73,35 @@ export const loadRemoteApp = async (repoUrl : string, queryArgs : any,  webConte
   // turn buffer into ethpkg
   const pkg = await pkgsign.loadPackage(packageData)
 
+  // e.g. https://github.com/ethereum/remix-ide
+  const previousUrl = repoUrl.replace('https://', '')
+  
   // 5. register module as hot-loaded module
-  const appUrl = await ModuleRegistry.add({
+  // FIXME construct mId based on package metadata not based on backend strategy
+  // this should only be done for signed packages
+  const mId = md5(`${md5(previousUrl)}.mod/${version}`)
+  await ModuleRegistry.add({
     pkg,
     repo
+  }, mId)
+
+  // 6. generate stable / deterministic url: this is important for reliable local storage even if
+  // same module is loaded from file or hosted location
+  // this is also important to avoid collision attacks
+  // wee also need to avoid that multiple packages access same storage as it would be the
+  // case with github.com/owner/repo/moduleId/index.html
+  const protocol = 'package:'
+  const appUrl = url.format({
+    slashes: true,
+    protocol,
+    pathname: `${md5(previousUrl)}.mod/${version}/index.html`
   })
 
-  // 6. now load packageData into memory and serve from there
-  webContents.loadURL(appUrl)
-
-  const switchVersion = (userVersion : string) => {
-    console.log('switch version to', userVersion)
-    // FIXME not always https
-    const newUrl = `package://${repoUrl.replace('https://', '')}?version=${userVersion}`
-    webContents.loadURL(newUrl)
-  }
-  const m = await createMenu(displayName, version, repo, switchVersion)
-  ModuleRegistry.emit('menu-available', m)
+  return appUrl
 }
 
-
-// hot load protocol
-
-const scheme = 'package'
-
-const prepareUninitialized = async (repoUrl : string, service : string, queryArgs : any, handler : any) => {
+const showSplash = async (handler : any, windowTitle : string, service = 'Github') => {
   let template = fs.readFileSync(__dirname+'/../electron/ui/splash.html', 'utf8')
-
-  // hack: id is used for window detection to get a mapping from app to window
-  const windowId = Math.random().toString(26).slice(2)
-  const windowTitle = `Electron App Manager - ${windowId}`
 
   // replace the default title with identifier
   template = template.replace('$WINDOW.TITLE$', windowTitle)
@@ -167,15 +123,41 @@ const prepareUninitialized = async (repoUrl : string, service : string, queryArg
     version: 'latest'
   }))
 
-  // TODO use timeout?
-  findWebContentsByTitle(windowTitle, (webContents : Electron.WebContents) => {
-    loadRemoteApp(repoUrl, queryArgs, webContents)
+  let result = handler({ mimeType: 'text/html', data: Buffer.from(template) })
+  return result
+}
+
+const showSplashAndDetectWebContents = (handler: any) : Promise<{webContents : Electron.WebContents, emitUpdate : (update : string) => void}> => new Promise(async (resolve, reject) => {
+  // hack: id is used for window detection to get a mapping from app to window
+  const windowId = Math.random().toString(26).slice(2)
+  const windowTitle = `Electron App Manager - ${windowId}`
+
+  // this will listen for title changes on all webContents
+  findWebContentsByTitle(windowTitle).then(webContents => {
+    const emitUpdate = (update : string) => {
+      webContents.executeJavaScript(`
+      try {
+        window.dispatchEvent(new CustomEvent('update', {detail: ${update} }));
+      } catch (error) {
+        console.error(error)
+      }
+    `)
+    }
+    resolve({ webContents, emitUpdate })
   })
 
+  // load the splash screen content this should trigger the above detector
+  await showSplash(handler, windowTitle)
+})
 
-  let result = handler({ mimeType: 'text/html', data: Buffer.from(template) })
-
-  return result
+// url.parse was not working reliably so we just use this
+// hack
+const removeQuery = (_url : string) => {
+  let qParamsIndex = _url.indexOf('?')
+  if(qParamsIndex > -1) {
+    return _url.substring(0, qParamsIndex)
+  }
+  return _url
 }
 
 const hotLoadProtocolHandler = async (fileUri : string, handler : any) => {
@@ -183,62 +165,57 @@ const hotLoadProtocolHandler = async (fileUri : string, handler : any) => {
   // console.log('handle request', fileUri)
   
   // extract query params
-  let url_parts = url.parse(fileUri, true)
-  let query = url_parts.query
-  // remove query args
-  let qParamsIndex = fileUri.indexOf('?')
-  if(qParamsIndex > -1) {
-    fileUri = fileUri.substring(0, qParamsIndex)
-  }
+  const url_parts = url.parse(fileUri, true)
+  const query = url_parts.query
+  const targetVersion = (query && (typeof query.version === 'string') && query.string) || 'latest'
 
-  if (fileUri.includes('github')) {
-    // replace custom protocol
-    const repoUrl = `https://${fileUri}`
-    return prepareUninitialized(repoUrl, 'GitHub', query, handler)
-  }
+  // and remove query portion from url
+  fileUri = removeQuery(fileUri)
 
-  if (fileUri.includes('bzz//')){
-    const repoUrl = fileUri.replace('bzz//', 'bzz://')
-    return prepareUninitialized(repoUrl, 'Swarm', query, handler)
-  }
-
-  // console.log('load', fileUri)
-  const filePath = fileUri
+  // loaded moduleId will have form :
+  // e23510c359fc83e91886f73a5518afc0.mod/0.8.5/index.html
+  // <hashed origin>/<version>/<resource path>
   const parts = fileUri.split('/')
-
-  // console.log('HOT-LOAD: received request', fileUri)
-
   if (parts.length > 0 && parts[0] === '/'){
     parts.shift() // remove leading /
   }
+  let moduleId = parts.shift() as string
+  if (moduleId && moduleId.endsWith('.mod')) {
+    const loadedVersion = parts.shift()
+    if (loadedVersion) {
+      moduleId = md5(`${moduleId}/${loadedVersion}`)
+    }
+  }
 
-  if (parts.length < 2) {
-    console.log('HOT-LOAD: no hotloader url found: fallback to fs', filePath)
-    let content = fs.readFileSync(filePath)
-    return handler(content)
+  if (ModuleRegistry.has(moduleId)) {
+    const relFilePath = parts.join('/')
+    const pkg = ModuleRegistry.getPackage(moduleId)
+    const entry = await pkg.getEntry(relFilePath)
+    if (entry) {
+      const content = await entry.file.readContent()
+      return handler(content)
+    } else {
+      console.log('HOT-LOAD WARNING: file not found in pkg', relFilePath)
+      return handler(-2)
+    }
   }
-  
-  const moduleId = parts.shift() as string
-  const relFilePath = parts.join('/')
-  
-  // console.log('handle request', moduleId, relFilePath)
-  if (!ModuleRegistry.has(moduleId)) {
-    throw new Error('HOT-LOAD: requested content cannot be served: module not found / loaded')
-  }
-  const pkg = ModuleRegistry.getPackage(moduleId)
-  const entry = await pkg.getEntry(relFilePath)
-  if (entry) {
-    const content = await entry.file.readContent()
-    return handler(content)
-  } else {
-    console.log('HOT-LOAD WARNING: file not found in pkg', relFilePath)
-    return handler(-2)
-  }
-  
+  // else load new module
+  const { webContents, emitUpdate } = await showSplashAndDetectWebContents(handler)
+  // @ts-ignore
+  const appUrl = await loadRemoteApp(`https://${fileUri}`, targetVersion, (app, progress) => {
+    // update splash screen with loading progress
+    const changes = {
+      app,
+      progress
+    }
+    let dataString = JSON.stringify(changes)
+    emitUpdate(dataString)
+  })
+  webContents.loadURL(appUrl)
+  // webContents.openDevTools({ mode: 'detach' })
 }
 
 let isRegistered = false
-
 /**
  * TODO things to consider:
  * this is *magic* and magic is usually not a good thing

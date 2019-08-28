@@ -19,8 +19,8 @@ class ModuleRegistry extends EventEmitter{
     this.modules = {}
   }
 
-  async add(mod : IModule) : Promise<string> {
-    const moduleId = Math.random().toString(26).slice(2)
+  async add(mod : IModule, moduleId? : string) : Promise<string> {
+    const mId = moduleId || ('' + Math.random().toString(26).slice(2))
     const {pkg} = mod
     if(await pkgsign.isSigned(pkg)) {
       console.log('is signed')
@@ -28,20 +28,16 @@ class ModuleRegistry extends EventEmitter{
       console.log('not signed')
       // FIXME check policy and throw if unsigned: don't serve unsigned packages
     }
-    this.modules[moduleId] = mod
-
-    const protocol = 'package:'
-    const appUrl = url.format({
-      slashes: true,
-      protocol,
-      pathname: `${moduleId}/index.html`, // path does only exist in memory
-    })
-    // app can now be served from this url
-    return appUrl
+    this.modules[mId] = mod
+    return mId
   }
 
   has(moduleId : string){
     return this.modules[moduleId] !== undefined
+  }
+
+  get(moduleId : string) {
+    return this.modules[moduleId]
   }
 
   getPackage(moduleId : string){

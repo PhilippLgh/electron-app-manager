@@ -3,6 +3,7 @@ import Cache from './repositories/Cache'
 import { IRelease, IReleaseExtended, IInvalidRelease } from './api/IRelease'
 import fs from 'fs'
 import path from 'path'
+import url from 'url'
 import RepoBase from './api/RepoBase'
 import MenuBuilder from './electron/menu'
 import { getRepository } from './repositories'
@@ -493,8 +494,17 @@ export default class AppManager extends RepoBase{
   
   async load(pkgLocation : IRelease | Buffer | string) : Promise<string> {
     const pkg = await getEthpkg(pkgLocation)
-    let appUrl = await ModuleRegistry.add({
+    const version = 'local'
+    // FIXME local storage will be different to package loaded from remote
+    // e.g. github
+    const moduleId  = await ModuleRegistry.add({
       pkg
+    })
+    const protocol = 'package:'
+    const appUrl = url.format({
+      slashes: true,
+      protocol,
+      pathname: `${moduleId}.mod/${version}/index.html`
     })
     return appUrl
   }

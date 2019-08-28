@@ -216,3 +216,34 @@ export const isPackaged = () => {
     return false
   }
 }
+
+export const findWebContentsByTitle = (windowTitle : string) : Promise<Electron.WebContents> => new Promise((resolve, reject) => {
+  const { webContents } = require('electron')
+  let _webContents = webContents.getAllWebContents()
+
+  const assignListeners = (fun : Function) => {
+    _webContents.forEach(w => {
+      // @ts-ignore
+      w.on('page-title-updated', fun)
+    })
+  }
+
+  const removeListeners = (fun : Function) => {
+      // @ts-ignore
+      _webContents.forEach(w => {
+        // @ts-ignore
+        w.removeListener('page-title-updated', fun)
+      })
+  }
+
+  const rendererDetection = function({sender: webContents} : any, title : string) {
+    if (title === windowTitle) {
+      // found the webContents instance that is rendering the splash:
+      removeListeners(rendererDetection)
+      resolve(webContents)
+    }
+  }
+
+  // we assign a listener to each webcontent to detect where the title changes
+  assignListeners(rendererDetection)
+})
