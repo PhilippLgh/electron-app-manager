@@ -20,7 +20,11 @@ class ModuleRegistry extends EventEmitter{
   }
 
   async add(mod : IModule) : Promise<string> {
-    const moduleId = Math.random().toString(26).slice(2)
+    let moduleId
+    if (mod.repo) moduleId = [mod.repo.name || '_', mod.repo.owner || '_', mod.repo.repo || '_'].join('.').toLowerCase()
+    else
+      moduleId = Math.random().toString(26).slice(2)
+
     const {pkg} = mod
     if(await pkgsign.isSigned(pkg)) {
       console.log('is signed')

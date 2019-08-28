@@ -19,6 +19,10 @@ export interface IFetchOptions {
 export interface IRepository {
 
   name : string;
+
+  owner : string;
+
+  repo : string; // e.g Github
   
   getReleases(options? : IFetchOptions): Promise<Array<(IRelease | IInvalidRelease)>>;
 
