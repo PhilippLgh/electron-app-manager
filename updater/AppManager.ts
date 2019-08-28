@@ -391,11 +391,23 @@ export default class AppManager extends RepoBase{
   }
 
   async getLatest(options : IFetchOptions = {}) : Promise<IRelease | null>{
-    const { filter } = options
+    const { filter, download, verify } = options
     const latestCached = await this.getLatestCached(filter)
-    const latestRemote = await this.getLatestRemote(options)
+    const latestRemote = await this.getLatestRemote({
+      filter,
+      download: false,
+      verify
+    })
     const latestHotLoaded = this.hotLoadedApp
     const latest = this._getLatest([latestCached, latestHotLoaded, latestRemote])
+    if (latest && latest.remote && download) {
+      const { downloadOptions } = options
+      const downloadResult = await this.download(latest, downloadOptions)
+      if (downloadResult && verify && !downloadResult.verificationResult) {
+        throw new Error(`Error: External package ${name} has no verification info.`)
+      }
+      return downloadResult
+    }
     return latest
   }
 
@@ -409,6 +421,16 @@ export default class AppManager extends RepoBase{
 
     releases = releases.sort(this.compareVersions)
 
+    // handle the common case of remote and local  (cached)
+    // having same version. in this case we want to always return cached
+    if (releases.length > 1) {
+      if (releases[0].version === releases[1].version) {
+        if(releases[0].remote && !releases[1].remote) {
+          return releases[1]
+        }
+      }
+    }
+
     // to determine from where the latest release comes use the repository tag on the release
     return releases[0]
   }
@@ -417,7 +439,7 @@ export default class AppManager extends RepoBase{
     writePackageData = true, 
     writeDetachedMetadata = true, 
     targetDir = this.cache.cacheDirPath,
-    onProgress = (progress : number) => {}
+    onProgress = (progress : number, release?: IRelease) => {}
   } : IDownloadOptions = {} ){
 
     let pp = 0;
@@ -428,7 +450,7 @@ export default class AppManager extends RepoBase{
         // console.log(`downloading update..  ${pn}%`)
         this.emit('update-progress', release, pn)
         if (onProgress) {
-          onProgress(pn)
+          onProgress(pn, release)
         }
       }
     }
