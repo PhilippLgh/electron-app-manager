@@ -8,7 +8,7 @@ import RepoBase from './api/RepoBase'
 import MenuBuilder from './electron/menu'
 import { getRepository } from './repositories'
 import ModuleRegistry from './ModuleRegistry'
-import { getEthpkg, isElectron, isPackaged } from './util'
+import { getEthpkg, isElectron, isPackaged, memoize } from './util'
 import { pkgsign } from 'ethpkg'
 import { downloadJson } from './lib/downloader'
 
@@ -62,7 +62,8 @@ export default class AppManager extends RepoBase{
   checkUpdateHandler: any; // IntervalHandler
   private menuBuilder: MenuBuilder;
   private isElectron: boolean = false;
-  
+  private getRemoteReleasesCached: Function;
+
   /**
    *
    */
@@ -70,6 +71,7 @@ export default class AppManager extends RepoBase{
     super();
 
     this.remote = getRepository(repository, modifiers, filter, prefix)
+    this.getRemoteReleasesCached = memoize(this.remote.getReleases.bind(this.remote))
 
     this.menuBuilder = new MenuBuilder(this)
 
@@ -350,13 +352,16 @@ export default class AppManager extends RepoBase{
     return this.cache.getReleases()
   }
 
-  async getRemoteReleases({sort = true} : IFetchOptions = {}){
+  async getRemoteReleases({sort = true, cached = true} : IFetchOptions = {}){
+    if (cached) {
+      return this.getRemoteReleasesCached({ sort })
+    }
     return this.remote.getReleases({ sort })
   }
 
-  async getReleases(options? : IFetchOptions){
+  async getReleases({ cached } : IFetchOptions = {}){
     const cachedReleases = await this.cache.getReleases({ sort : false })
-    const remoteReleases = await this.getRemoteReleases({ sort : false })
+    const remoteReleases = await this.getRemoteReleases({ sort : false, cached })
     const allReleases = [
       ...cachedReleases,
       ...remoteReleases

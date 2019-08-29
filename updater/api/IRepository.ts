@@ -10,6 +10,7 @@ export interface IDownloadOptions {
 export interface IFetchOptions {
   filter? : string,
   sort?: boolean,
+  cached?: boolean,
   filterInvalid?: boolean, 
   download?: boolean, // will download the release to cache if not specified otherwise
   downloadOptions?: IDownloadOptions,
