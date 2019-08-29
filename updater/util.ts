@@ -222,7 +222,8 @@ export const findWebContentsByTitle = (windowTitle : string) : Promise<Electron.
   let _webContents = webContents.getAllWebContents()
 
   const assignListeners = (fun : Function) => {
-    _webContents.forEach(w => {
+    // @ts-ignore    
+    _webContents.forEach((w : Electron.WebContents) => {
       // @ts-ignore
       w.on('page-title-updated', fun)
     })
@@ -230,7 +231,7 @@ export const findWebContentsByTitle = (windowTitle : string) : Promise<Electron.
 
   const removeListeners = (fun : Function) => {
       // @ts-ignore
-      _webContents.forEach(w => {
+      _webContents.forEach((w : Electron.WebContents) => {
         // @ts-ignore
         w.removeListener('page-title-updated', fun)
       })
