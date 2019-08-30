@@ -30,6 +30,6 @@ export interface IRepository {
 export interface IRemoteRepository extends IRepository {
   repositoryUrl: string;
 
-  download(update : IRelease, onProgress? : Function) : Promise<Buffer>
+  download(release : IRelease, onProgress? : Function) : Promise<Buffer>
 
 }
