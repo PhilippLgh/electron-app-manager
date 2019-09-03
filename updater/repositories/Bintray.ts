@@ -48,7 +48,7 @@ export default class Bintray extends RepoBase implements IRemoteRepository {
       const arch = '64 Bit' // FIXME
       const isPrerelease = false
       const channel = undefined
-      const location = `https://bintray.com/consensys/pegasys-repo/download_file?file_path=${fileName}`
+      const location = `https://bintray.com/${this.subject}/${this.repoName}/download_file?file_path=${fileName}`
 
       return {
         name,
