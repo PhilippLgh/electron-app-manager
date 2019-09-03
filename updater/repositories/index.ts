@@ -1,6 +1,7 @@
 import GithubRepo from './Github'
 import AzureRepo from './Azure'
 import SwarmRepo from './Swarm'
+import BintrayRepo from './Bintray'
 import { IRelease } from '../api/IRelease'
 
 export const getRepository = (urlString : string, modifiers? : any, filter? : any, prefix? : string) => {
@@ -8,6 +9,11 @@ export const getRepository = (urlString : string, modifiers? : any, filter? : an
     return new GithubRepo(urlString, {
       filter,
       prefix
+    })
+  }
+  else if(urlString.startsWith('https://bintray.com')){
+    return new BintrayRepo(urlString, {
+      filter
     })
   }
   else if(urlString.includes('blob.core.windows.net')){
