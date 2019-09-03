@@ -254,11 +254,12 @@ export const memoize = (fn : Function) => {
       return cache[n];
     }
     else {
-      let result
+      let result = undefined
       try {
-        result = await fn(args)
+        result = await fn(...args)
       } catch (error) {
         console.log('error in memoize', error)
+        throw error
       }
       cache[n] = result;
       return result;
