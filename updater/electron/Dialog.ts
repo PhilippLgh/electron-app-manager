@@ -10,8 +10,7 @@ export class ElectronDialogs {
       Update found: ${name} (v${version}). 
       Press "Ok" to download it in the background.
       `
-    }, 
-    (response : number) => {
+    }).then(({ response }) => {
       // response: Number - The index of the button that was clicked
       // console.log('user response to update:', response)
       const shouldInstall = response !== 1 // = index of 'cancel'
@@ -28,7 +27,9 @@ export class ElectronDialogs {
     dialog.showMessageBox({
       title: 'Install Updates',
       message: 'Updates downloaded, application will be quit for update...'
-    }, callback)
+    }).then(({response, checkboxChecked}) => {
+      callback(response, checkboxChecked)
+    })
   }
   static displayUpdateError(err: Error) {
     dialog.showMessageBox({
@@ -38,9 +39,6 @@ export class ElectronDialogs {
       An error occurred during update: 
       ${err ? err.message : '<unknown error>'}
       `
-    }, 
-    (response : number) => {
-
     })
   }
 }

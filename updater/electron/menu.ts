@@ -25,13 +25,13 @@ const showDialog = (title: string, message: string, buttonHandler : { [index:str
       message,
       buttons,
       // icon: nativeImage.createFromBuffer(fs.readFileSync(path.join(__dirname, 'logo-placeholder.png')))
-    }, async response => {
+    })
+    .then(({ response }) => {
       const button = buttons[response]
       console.log('response was', response, button)
       try {
         if(typeof buttonHandler[button] === 'function'){
           console.log('button handler found and called');
-
           (buttonHandler[button])()
         }
       } catch (error) {
@@ -39,7 +39,7 @@ const showDialog = (title: string, message: string, buttonHandler : { [index:str
       }
       resolve()
     })
-  });
+  })
 }
 
 // TODO remove redundant definition

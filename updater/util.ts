@@ -1,13 +1,12 @@
 import path from 'path'
 // @ts-ignore
 import {parseString} from 'xml2js'
-
 import { IRelease, IInvalidRelease } from "./api/IRelease"
 import { pkgsign } from 'ethpkg'
-
 import { download } from "./lib/downloader"
-
 import semver from 'semver'
+import { WebContents } from 'electron'
+import { md5 } from './lib/hashes'
 
 export function parseXml(xml : string){
   return new Promise((resolve, reject) => {
@@ -217,21 +216,18 @@ export const isPackaged = () => {
   }
 }
 
-export const findWebContentsByTitle = (windowTitle : string) : Promise<Electron.WebContents> => new Promise((resolve, reject) => {
+export const findWebContentsByTitle = (windowTitle : string) : Promise<WebContents> => new Promise((resolve, reject) => {
   const { webContents } = require('electron')
   let _webContents = webContents.getAllWebContents()
 
   const assignListeners = (fun : Function) => {
-    _webContents.forEach(w => {
-      // @ts-ignore
+    _webContents.forEach((w : any) => {
       w.on('page-title-updated', fun)
     })
   }
 
   const removeListeners = (fun : Function) => {
-      // @ts-ignore
-      _webContents.forEach(w => {
-        // @ts-ignore
+      _webContents.forEach((w : any) => {
         w.removeListener('page-title-updated', fun)
       })
   }
@@ -247,3 +243,26 @@ export const findWebContentsByTitle = (windowTitle : string) : Promise<Electron.
   // we assign a listener to each webcontent to detect where the title changes
   assignListeners(rendererDetection)
 })
+
+// TODO implement expiration
+// TODO implement persistence
+export const memoize = (fn : Function) => {
+  let cache : any = {}
+  return async (...args : any[]) => {
+    const n = md5(JSON.stringify(args));
+    if (n in cache) {
+      return cache[n];
+    }
+    else {
+      let result = undefined
+      try {
+        result = await fn(...args)
+      } catch (error) {
+        console.log('error in memoize', error)
+        throw error
+      }
+      cache[n] = result;
+      return result;
+    }
+  }
+}

@@ -10,6 +10,7 @@ export interface IDownloadOptions {
 export interface IFetchOptions {
   filter? : string,
   sort?: boolean,
+  cached?: boolean,
   filterInvalid?: boolean, 
   download?: boolean, // will download the release to cache if not specified otherwise
   downloadOptions?: IDownloadOptions,
@@ -29,6 +30,6 @@ export interface IRepository {
 export interface IRemoteRepository extends IRepository {
   repositoryUrl: string;
 
-  download(update : IRelease, onProgress? : Function) : Promise<Buffer>
+  download(release : IRelease, onProgress? : Function) : Promise<Buffer>
 
 }
