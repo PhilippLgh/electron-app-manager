@@ -1,10 +1,12 @@
 import fs, { realpath } from 'fs'
 import path from 'path'
 import zlib from 'zlib'
+import tar from 'tar-stream'
 
 import WritableMemoryStream from './lib/WritableMemoryStream'
 
-import { ethpkg, pkgsign, IPackage, IPackageEntry } from 'ethpkg';
+import { ethpkg, pkgsign, IPackage, IPackageEntry } from 'ethpkg'
+import { getExtension } from './util'
 
 
 const pubKeyBuildServer = `
@@ -51,9 +53,9 @@ export default class AppPackage {
   private packagePath: string;
   initialized: boolean = false;
 
-  constructor(packagePath : string){
+  constructor(packagePath: string) {
     // TODO asar files might need special handling
-    if(!fs.existsSync(packagePath)){
+    if (!fs.existsSync(packagePath)) {
       throw new Error('package does not exist: ' + packagePath)
     }
     this.packagePath = packagePath
@@ -61,36 +63,40 @@ export default class AppPackage {
 
   async init() {
     this.pkg = await ethpkg.getPackage(this.packagePath)
-    if(!this.pkg) {
+    if (!this.pkg) {
       throw new Error('package could not be initialized')
     }
     this.initialized = true
     setTimeout(() => {
-      if(!this.initialized) {
+      if (!this.initialized) {
         throw new Error('package not initialized - forgot to call init() ?')
       }
     }, 500)
     return this
   }
 
-  get isTar(){
-    return this.packagePath.endsWith('.tar.gz')
+  get isTar() {
+    return this.packagePath.endsWith('.tar.gz') || this.packagePath.endsWith('.tgz') || this.packagePath.endsWith('.tar')
   }
 
-  get isZip(){
+  get isZip() {
     return this.packagePath.endsWith('.zip')
   }
 
-  get isAsar(){
+  get isAsar() {
     return this.packagePath.endsWith('.asar')
   }
 
-  get detachedMetadataPath() : string {
+  get detachedMetadataPath(): string {
     return this.packagePath + '.metadata.json'
   }
 
+  get packageName() {
+    return path.basename(this.packagePath)
+  }
+
   async verify() {
-    if(!this.pkg){
+    if (!this.pkg) {
       return null
     }
     const result = await pkgsign.verify(this.pkg!)
@@ -109,7 +115,7 @@ export default class AppPackage {
 
   async getEmbeddedMetadata(): Promise<Object | null> {
 
-    if(this.isAsar){
+    if (this.isAsar) {
       const includedMetadataPath = path.join(this.packagePath, 'metadata.json')
       // FIXME this only works for asar files in electron with patched fs
       const metadataContents = fs.readFileSync(includedMetadataPath, 'utf8')
@@ -125,7 +131,7 @@ export default class AppPackage {
 
     try {
       let entry = await this.pkg!.getEntry('metadata.json')
-      if(!entry){
+      if (!entry) {
         return null
       }
       let content = await entry.file.readContent()
@@ -135,7 +141,7 @@ export default class AppPackage {
     }
   }
 
-  async getDetachedMetadata() : Promise<Object | null> {
+  async getDetachedMetadata(): Promise<Object | null> {
     try {
       return JSON.parse(fs.readFileSync(this.detachedMetadataPath, 'utf8'))
     } catch (error) {
@@ -145,44 +151,103 @@ export default class AppPackage {
   }
 
   async getMetadata(): Promise<any> {
-    if(await this.hasEmbeddedMetadata()){
+    if (await this.hasEmbeddedMetadata()) {
       return this.getEmbeddedMetadata()
-    } else if(this.hasDetachedMetadata()){
+    } else if (this.hasDetachedMetadata()) {
       return this.getDetachedMetadata()
     } else {
       return null
     }
   }
 
-  async getEntries() : Promise<IPackageEntry[]>{
+  async getEntries(): Promise<IPackageEntry[]> {
     return this.pkg!.getEntries()
   }
-  async getEntry(entryPath : string) : Promise<IPackageEntry | null>{
-   return this.pkg!.getEntry(entryPath)
+  async getEntry(entryPath: string): Promise<IPackageEntry | null> {
+    return this.pkg!.getEntry(entryPath)
   }
-  async extract(){
-    let targetDir = path.basename(this.packagePath)
-    if(this.isZip){
-      // FIXME this.zip.extractAllTo(targetDir, /*overwrite*/false);
+  private async extractTempt() {
+    /*
+    if (this.isZip) {
+      // FIXME this.zip.extractAllTo(targetDir, /*overwrite/false);
     }
-    else if(this.isTar){
-      // this is using tar-fs not tar-stream
-      /*
       targetDir = path.dirname(this.packagePath)
-      // console.log('extract',this.packagePath,' tar to', targetDir)
+      console.log('target dir', targetDir)
+      const temp = path.join(targetDir, 'bla')
+      fs.mkdirSync(temp, {
+        recursive: true
+      })
+      console.log('extract',this.packagePath, 'to', temp)
       // extracting a directory
       const gzip = zlib.createGunzip()
       // this will overwrite existing files
       const inputStream = fs.createReadStream(this.packagePath)
+      const outputStream = fs.createWriteStream(temp+'/bla.temp')
       return new Promise((resolve, reject) => {
-        inputStream.pipe(gzip).pipe(tar.extract(targetDir))
+        inputStream.pipe(gzip).pipe(tar.extract()).pipe(outputStream)
         .on('finish', () => {
           resolve(targetDir)
         })
         // TODO handle error
       });
       */
+  }
+  // FIXME note that this is not performance optimized and we do multiple runs on the package data stream
+  async extract(onProgress?: Function) {
+    // get a list of all entries in the package
+    const entries = await this.getEntries()
+    // get the directory where the package is located
+    const packageLocation = path.dirname(this.packagePath)
+    // iterate over all entries and write them to disk next to the package
+    // WARNING packages can have different structures: if the .tar.gz has a nested dir it is fine
+    // if not the files will directly be in the directory which can cause all kinds of problems
+    // in this case we should try to create an extra subdir
+    const ext = getExtension(this.packagePath)
+    const packageNameWithoutExtension = this.packageName.replace(ext, '')
+    const extractedPackagePath = path.join(
+      packageLocation,
+      packageNameWithoutExtension
+    )
+    if (!fs.existsSync(extractedPackagePath)) {
+      fs.mkdirSync(extractedPackagePath, {
+        recursive: true
+      })
     }
+    let i = 0
+    for (const entry of entries) {
+      // the full path where we want to write the package entry's contents on disk
+      const destPath = path.join(extractedPackagePath, entry.relativePath)
+      // console.log('create dir sync', destPath)
+      if (entry.file.isDir) {
+        if (!fs.existsSync(destPath)) {
+          fs.mkdirSync(destPath, {
+            recursive: true
+          })
+        }
+      } else {
+        try {
+          // try to overwrite
+          if (fs.existsSync(destPath)) {
+            fs.unlinkSync(destPath)
+          }
+          // IMPORTANT: if the binary already exists the mode cannot be set
+          // FIXME make sure the written file has same attributes / mode / permissions etc
+          fs.writeFileSync(destPath, await entry.file.readContent())
+        } catch (error) {
+          console.log('error during extraction', error)
+        }
+      }
+      // TODO change to size based progress?
+      const progress = Math.floor((100 / entries.length) * ++i)
+      if (onProgress) {
+        try {
+          onProgress(progress, entry.file.name)
+        } catch (error) {
+          console.log('error in onProgress handler')
+        }
+      }
+    }
+    return extractedPackagePath
   }
 
 }

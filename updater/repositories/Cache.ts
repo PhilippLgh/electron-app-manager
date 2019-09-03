@@ -145,9 +145,9 @@ class Cache extends RepoBase implements IRepository {
     const appPackage = await this.getPackageCached(release)
     return appPackage.getEntry(entryPath)
   }
-  async extract(release: IRelease): Promise<any> {
+  async extract(release: IRelease, onProgress?: Function): Promise<any> {
     const appPackage = await this.getPackageCached(release)
-    return appPackage.extract()
+    return appPackage.extract(onProgress)
   }
 
 }

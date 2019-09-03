@@ -4,7 +4,9 @@ export interface IDownloadOptions {
   writePackageData?: boolean, 
   writeDetachedMetadata?: boolean, 
   targetDir?: string,
-  onProgress?: (progress : number, release?: IRelease) => void
+  onProgress?: (progress: number, release?: IRelease) => void,
+  extractPackage?: boolean,
+  onExtractionProgress?: (progress: number, fileName: string) => void
 }
 
 export interface IFetchOptions {

@@ -445,7 +445,9 @@ export default class AppManager extends RepoBase{
     writePackageData = true, 
     writeDetachedMetadata = true, 
     targetDir = this.cache.cacheDirPath,
-    onProgress = (progress : number, release?: IRelease) => {}
+    onProgress = (progress : number, release?: IRelease) => {},
+    extractPackage = false, // ignored if not written to disk (writePackageData)
+    onExtractionProgress = () => {},
   } : IDownloadOptions = {} ){
 
     let pp = 0;
@@ -476,6 +478,18 @@ export default class AppManager extends RepoBase{
       // TODO patch package metadata if it doesn't exist
       // TODO write to .temp and rename to minimize risk of corrupted downloads
       fs.writeFileSync(location, packageData)
+      let releaseDownloaded = {
+        ...release,
+        remote: false,
+        verificationResult,
+        location
+      }
+      if (extractPackage) {
+        const unpackedPath = await this.extract(releaseDownloaded, onExtractionProgress)
+        release.unpacked = unpackedPath
+      } 
+      this.emit('update-downloaded', release)
+      return releaseDownloaded
     } else{
       this.emit('update-downloaded', release)
       return {
@@ -485,15 +499,6 @@ export default class AppManager extends RepoBase{
         verificationResult,
         data: packageData
       }
-    }
-
-    this.emit('update-downloaded', release)
-
-    return {
-      ...release,
-      remote: false,
-      verificationResult,
-      location
     }
   }
   
@@ -528,7 +533,6 @@ export default class AppManager extends RepoBase{
   async updateMenuVersion(version : string) {
     return this.menuBuilder.updateMenuVersion(version)
   }
-
   async getLocalPackage(release : IRelease) {
     return this.cache.getPackage(release)
   }
@@ -538,12 +542,10 @@ export default class AppManager extends RepoBase{
   async getEntry(release : IRelease, entryPath : string){
     return this.cache.getEntry(release, entryPath)
   }
-  async extract(release : IRelease){
-    return this.cache.extract(release)
+  async extract(release : IRelease, onProgress?: Function){
+    return this.cache.extract(release, onProgress)
   }
-
   static async downloadJson(_url : string) {
     return downloadJson(_url)
   }
-
 }
