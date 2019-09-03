@@ -6,7 +6,7 @@ import path from 'path'
 
 import { verifyPGP, checksumMd5 } from '../tasks/verify'
 import AppPackage from '../AppPackage'
-import { getExtension, hasSupportedExtension } from '../util'
+import { getExtension, hasSupportedExtension, memoize } from '../util'
 import { pkgsign as ethpkg } from 'ethpkg'
 
 // for different caching strategies see
@@ -16,10 +16,12 @@ class Cache extends RepoBase implements IRepository {
   cacheDirPath: string;
 
   public name: string = 'Cache';
-  
+  private getPackageCached : Function;
+
   constructor(cacheDirPath : string){
     super()
     this.cacheDirPath = cacheDirPath
+    this.getPackageCached = memoize(this.getPackage.bind(this))
   }
 
   async clear() {
@@ -46,7 +48,22 @@ class Cache extends RepoBase implements IRepository {
       location
     } as any
 
-    const appPackage = await new AppPackage(release.location).init()
+    let appPackage
+    try {
+      appPackage = await this.getPackageCached(release)
+    } catch (error) {
+      console.log('error in cached package', error)
+      return {
+        name,
+        error
+      }
+    }
+    if (appPackage === undefined) {
+      return {
+        name,
+        error: new Error('Could not parse package '+ release.location)
+      }
+    }
     const metadata = await appPackage.getMetadata()
 
     if(!metadata){
@@ -115,19 +132,21 @@ class Cache extends RepoBase implements IRepository {
     return filtered[0]
   }
   async getPackage(release : IRelease) {
+    console.time('load '+release.location)
     const appPackage = await new AppPackage(release.location).init()
+    console.timeEnd('load '+release.location)
     return appPackage
   }
   async getEntries(release : IRelease){
-    const appPackage = await new AppPackage(release.location).init()
+    const appPackage = await this.getPackageCached(release)
     return appPackage.getEntries()
   }
   async getEntry(release : IRelease, entryPath : string){
-    const appPackage = await new AppPackage(release.location).init()
+    const appPackage = await this.getPackageCached(release)
     return appPackage.getEntry(entryPath)
   }
   async extract(release: IRelease): Promise<any> {
-    const appPackage = await new AppPackage(release.location).init()
+    const appPackage = await this.getPackageCached(release)
     return appPackage.extract()
   }
 
