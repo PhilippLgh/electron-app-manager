@@ -12,7 +12,9 @@ export const registerPackageProtocol = () => {
     you have to register it as a standard scheme.
     -> needs to be registered before app.onReady
   */
+  // @ts-ignore
   if (protocol.registerStandardSchemes && typeof protocol.registerStandardSchemes === 'function') {
+    // @ts-ignore
     protocol.registerStandardSchemes(['package'], { secure: true })
   } else {
     // @ts-ignore
