@@ -1,7 +1,6 @@
 import fs, { realpath } from 'fs'
 import path from 'path'
 import zlib from 'zlib'
-import tar from 'tar-stream'
 
 import WritableMemoryStream from './lib/WritableMemoryStream'
 
