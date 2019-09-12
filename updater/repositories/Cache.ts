@@ -21,6 +21,9 @@ class Cache extends RepoBase implements IRepository {
   constructor(cacheDirPath : string){
     super()
     this.cacheDirPath = cacheDirPath
+    if (!fs.existsSync(cacheDirPath)) {
+      fs.mkdirSync(cacheDirPath)
+    }
     this.getPackageCached = memoize(this.getPackage.bind(this))
   }
 
@@ -65,7 +68,6 @@ class Cache extends RepoBase implements IRepository {
       }
     }
     const metadata = await appPackage.getMetadata()
-
     if(!metadata){
       console.log('package has no metadata', fileName)
       return {
@@ -73,21 +75,19 @@ class Cache extends RepoBase implements IRepository {
         error: 'No metadata: ' + fileName
       }
     }
-
     const verificationResult = await appPackage.verify()
-
     if(metadata.signature) {
       //console.log('signature found', release.signature)
       //let result = await verifyPGP(binFileName, pubKeyBuildServer, metadata.signature)
       //console.log('is sig ok?', result)
     }
-
+    const extractedPackagePath = fs.existsSync(appPackage.extractedPackagePath) ? appPackage.extractedPackagePath : undefined
     // console.log('metadata', metadata)
-
     // order is important or location e.g. would be url
     release = {
       ...metadata,
       ...release,
+      extractedPackagePath,
       verificationResult,
       remote: false
     }

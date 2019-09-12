@@ -22,7 +22,7 @@ export interface IRelease extends IReleaseBase {
   size: Number;
   tag: string;
   location: string;
-  unpacked?: string; // extracted package path
+  extractedPackagePath?: string;
   repository: string; // url
   error: void;
   signature?: string // url

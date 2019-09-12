@@ -94,6 +94,20 @@ export default class AppPackage {
     return path.basename(this.packagePath)
   }
 
+  get packageNameWithoutExtension() {
+    const ext = getExtension(this.packagePath)
+    const packageNameWithoutExtension = this.packageName.replace(ext, '')
+    return packageNameWithoutExtension
+  }
+
+  /**
+   * package is extracted in a directory next to package with same name
+   * but without archive / package extension
+   */
+  get extractedPackagePath() {
+    return path.join(path.dirname(this.packagePath), this.packageNameWithoutExtension)
+  }
+
   async verify() {
     if (!this.pkg) {
       return null
@@ -165,7 +179,7 @@ export default class AppPackage {
   async getEntry(entryPath: string): Promise<IPackageEntry | null> {
     return this.pkg!.getEntry(entryPath)
   }
-  private async extractTempt() {
+  private async extractTemp() {
     /*
     if (this.isZip) {
       // FIXME this.zip.extractAllTo(targetDir, /*overwrite/false);
@@ -195,18 +209,11 @@ export default class AppPackage {
   async extract(onProgress?: Function) {
     // get a list of all entries in the package
     const entries = await this.getEntries()
-    // get the directory where the package is located
-    const packageLocation = path.dirname(this.packagePath)
     // iterate over all entries and write them to disk next to the package
     // WARNING packages can have different structures: if the .tar.gz has a nested dir it is fine
     // if not the files will directly be in the directory which can cause all kinds of problems
     // in this case we should try to create an extra subdir
-    const ext = getExtension(this.packagePath)
-    const packageNameWithoutExtension = this.packageName.replace(ext, '')
-    const extractedPackagePath = path.join(
-      packageLocation,
-      packageNameWithoutExtension
-    )
+    const extractedPackagePath = this.extractedPackagePath
     if (!fs.existsSync(extractedPackagePath)) {
       fs.mkdirSync(extractedPackagePath, {
         recursive: true
