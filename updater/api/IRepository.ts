@@ -12,6 +12,7 @@ export interface IDownloadOptions {
 export interface IFetchOptions {
   filter? : string,
   sort?: boolean,
+  version?: string, // semver filter
   cached?: boolean,
   filterInvalid?: boolean, 
   download?: boolean, // will download the release to cache if not specified otherwise
