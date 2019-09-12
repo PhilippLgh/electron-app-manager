@@ -266,3 +266,18 @@ export const memoize = (fn : Function) => {
     }
   }
 }
+
+export const generateHostnameForRelease = async (release : IRelease) => {
+  // TODO construct stable uid independent of version number and release origin (e.g. github, cache)
+  // construct mId based on package metadata not based on backend strategy
+  // const pkg = await this.getLocalPackage(release)
+  // const metadata = await pkg.getMetadata()
+  // const { name } = metadata
+
+  const { name } = release
+  // this should only be done for signed packages
+  // name is the only property that stays fix however it is a very weak way
+  // to generate the id since packages are not registered centrally
+  const host = md5(name) // hash to eliminate special chars
+  return `${host}.mod`
+}

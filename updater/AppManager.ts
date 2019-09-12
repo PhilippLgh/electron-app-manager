@@ -7,8 +7,7 @@ import url from 'url'
 import RepoBase from './api/RepoBase'
 import MenuBuilder from './electron/menu'
 import { getRepository } from './repositories'
-import ModuleRegistry from './ModuleRegistry'
-import { getEthpkg, isElectron, isPackaged, memoize } from './util'
+import { getEthpkg, isElectron, isPackaged, memoize, generateHostnameForRelease } from './util'
 import { pkgsign } from 'ethpkg'
 import { downloadJson } from './lib/downloader'
 
@@ -348,6 +347,40 @@ export default class AppManager extends RepoBase{
     })
   }
 
+  /* TODO only temp solution for custom protocol
+    replace with AppManager's routine
+    not possible now because it would only emit events but the main app
+    has no listeners registered on the AppManager instance in custom protocol handler.
+    --> needs dialogs 
+    the next problem is that a targetVersion cannot be specified
+  */
+  async _checkForAppUpdatesAndNotify({
+    version = undefined as string | undefined,
+    download = false,
+    dialogs = false
+  }){
+    // checks remote and cache for release
+    let release = await this.getLatest({ 
+      version,
+      download: false // we set to false to be able to distinguish local vs remote
+    })
+
+    // if release.remote -> remote has newer version
+    if (release && release.remote && download) {
+      // download release in background
+      release = await this.download(release, {
+        writePackageData: true, // will write data to cache
+        // onProgress: progress => onProgress(app, progress) // no progress -> splash already closed
+      })
+    }
+
+    if (release && dialogs) {
+      // TODO display info of newer version to user
+      console.log('update found!', release.version)
+      // TODO dialogs.displayReloadForUpdateDialog()
+    }
+  }
+
   async getCachedReleases(){
     return this.cache.getReleases()
   }
@@ -378,7 +411,7 @@ export default class AppManager extends RepoBase{
     return this.cache.getLatest()
   }
 
-  async getLatestRemote(options : IFetchOptions){
+  async getLatestRemote(options : IFetchOptions = {}){
     let { filter, download, verify } = options
     let release = await this.remote.getLatest(filter)
     if (release === null) {
@@ -485,8 +518,8 @@ export default class AppManager extends RepoBase{
         location
       }
       if (extractPackage) {
-        const unpackedPath = await this.extract(releaseDownloaded, onExtractionProgress)
-        release.unpacked = unpackedPath
+        const extractedPackagePath = await this.extract(releaseDownloaded, onExtractionProgress)
+        releaseDownloaded.extractedPackagePath = extractedPackagePath
       } 
       this.emit('update-downloaded', release)
       return releaseDownloaded
@@ -502,26 +535,43 @@ export default class AppManager extends RepoBase{
     }
   }
   
-  async load(pkgLocation : IRelease | Buffer | string) : Promise<string> {
-    const pkg = await getEthpkg(pkgLocation)
-    const version = 'local'
-    // FIXME local storage will be different to package loaded from remote
-    // e.g. github
-    const moduleId  = await ModuleRegistry.add({
-      pkg
-    })
+  async load(pkgLocation : string) : Promise<string> {
+    /*
+    const module  = await ModuleRegistry.addFromFile(pkgLocation)
+    const moduleId = ''
     const protocol = 'package:'
     const appUrl = url.format({
       slashes: true,
       protocol,
-      pathname: `${moduleId}.mod/${version}/index.html`
+      pathname: `${moduleId}.mod/index.html`
+    })
+    return appUrl
+    */
+   return ''
+  }
+
+  async _generateUrlForCachedRelease(release : IRelease) {
+
+    // TODO register release as hot-loaded release
+
+    // generate stable / deterministic url: this is important for reliable local storage even if
+    // same module is loaded from file or hosted location
+    // this is also important to avoid collision attacks
+    // wee also need to avoid that multiple packages access same storage as it would be the
+    // case with github.com/owner/repo/moduleId/index.html
+    const hostname = await generateHostnameForRelease(release)
+    const protocol = 'package:'
+    const appUrl = url.format({
+      slashes: true,
+      protocol,
+      pathname: `${hostname}/index.html`
     })
     return appUrl
   }
 
   static on(channel : string, cb : (...args: any[]) => void) : any {
     if (channel === 'menu-available') {
-      ModuleRegistry.on('menu-available', cb)
+      // ModuleRegistry.on('menu-available', cb)
     } else {
       throw new Error('unsupported event type: '+channel)
     }

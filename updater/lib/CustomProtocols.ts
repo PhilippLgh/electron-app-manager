@@ -1,12 +1,13 @@
 import fs from 'fs'
+import path from 'path'
 import url from 'url'
 import { getRepository } from '../repositories'
-import { request } from '../lib/downloader'
+import { request, download } from '../lib/downloader'
 import { pkgsign } from 'ethpkg'
 import protocol from '../abstraction/protocol'
-import ModuleRegistry from '../ModuleRegistry'
-import { md5 } from './hashes';
-import { findWebContentsByTitle } from '../util'
+import { findWebContentsByTitle, memoize, generateHostnameForRelease } from '../util'
+import AppManager from '../AppManager'
+import { md5 } from '../lib/hashes'
 // import { createSwitchVersionMenu, createCheckUpdateMenu, createMenu } from '../electron/menu'
 
 const scheme = 'package'
@@ -21,86 +22,80 @@ async function getZipUrl(_url : string){
   return _url
 }
 
+let hosts : any = {}
+
+const getAppManagerForUrl = (repoUrl : string) => {
+  console.log('get app manager for', repoUrl)
+  return new AppManager({
+    repository: repoUrl,
+    auto: true,
+    // FIXME we need to generate a subfolder folder for different apps for faster cache scan
+    cacheDir: `C:/Users/Philipp/AppData/Roaming/grid/app_cache/apps/${md5(repoUrl)}`
+  })
+}
+
+const getAppManagerForVirtualHost = (hostname : string) => {
+  if (!hosts[hostname]) {
+    console.log('host not found', hostname, Object.keys(hosts))
+  }
+  return hosts[hostname]
+}
+
+
 export const loadRemoteApp = async (repoUrl : string, targetVersion : string, onProgress = (app : any, progress : number) => {}) => {
-  // 1. get repo for url
-  const repo = getRepository(repoUrl)
+  
+  const appManager = getAppManagerForUrl(repoUrl)
 
-  // 2. try to find specified version or latest
-  let release = null
-  if (targetVersion === 'latest') {
-    release = await repo.getLatest()
-  } else {
-    release = await repo.getLatest(`=${targetVersion}`)
-  }
+  // caching strategy: cache, update and refresh (optional)
+  // serve release from cache if possible -> for fast start
+  // check and download (always) newer version in background
+  // display info of newer version if it exists on remote
+  // user can then restart or will have the update on next start
+  // see https://serviceworke.rs/strategy-cache-update-and-refresh.html
 
-  if (!release) {
-    // FIXME close splash here and let user know
-    console.log(`release for version ${targetVersion} not found`)
-    return // avoid ts issue
-  } else {
-    // console.log('latest version found', latest)
-  }
+  let release = await appManager.getLatestCached(targetVersion)
+  if (release) {
+    const appUrl = await appManager._generateUrlForCachedRelease(release)
+    // don't await updater routine
+    appManager._checkForAppUpdatesAndNotify({
+      version: targetVersion,
+      download: true,
+      dialogs: true
+    })
+    
+    // cache appManager
+    const hostname = await generateHostnameForRelease(release)
+    hosts[hostname] = appManager
 
-  const {
-    displayName,
-    size,
-    version,
-  } = release
+    return appUrl
+  } 
 
-  // @ts-ignore
-  const icon = release.icon
-
-  const app = {
-    name: displayName || '<unknown>',
-    displayName: displayName || '<unknown>',
-    version,
-    size,
-    icon
-  }
-
-  // 3. download specified version & update window
-  let pp = 0
-  const packageData = await repo.download(release, (progress : number) => {
-    let pn = Math.floor(progress * 100);
-    if (pn > pp) {
-      pp = pn
-      onProgress(app, pp)
+  // else nothing in cache -> try to fetch from remote
+  release = await appManager.getLatestRemote({ 
+    version: targetVersion,
+    download: true,
+    downloadOptions: {
+      writePackageData: true, // will write data to cache
+      onProgress: (progress, release) => onProgress(release, progress)
     }
   })
 
-  // TODO implement caching strategy here
+  if (!release) {
+    // TODO display error
+    // TODO allow user to close
+    console.log('FATAL: package / app not found')
+    return '' // FIXME
+  }
 
-  // turn buffer into ethpkg
-  const pkg = await pkgsign.loadPackage(packageData)
+  // cache appManager
+  const hostname = await generateHostnameForRelease(release)
+  hosts[hostname] = appManager
 
-  // e.g. https://github.com/ethereum/remix-ide
-  const previousUrl = repoUrl.replace('https://', '')
-  
-  // 5. register module as hot-loaded module
-  // FIXME construct mId based on package metadata not based on backend strategy
-  // this should only be done for signed packages
-  const mId = md5(`${md5(previousUrl)}.mod/${version}`)
-  await ModuleRegistry.add({
-    pkg,
-    repo
-  }, mId)
-
-  // 6. generate stable / deterministic url: this is important for reliable local storage even if
-  // same module is loaded from file or hosted location
-  // this is also important to avoid collision attacks
-  // wee also need to avoid that multiple packages access same storage as it would be the
-  // case with github.com/owner/repo/moduleId/index.html
-  const protocol = 'package:'
-  const appUrl = url.format({
-    slashes: true,
-    protocol,
-    pathname: `${md5(previousUrl)}.mod/${version}/index.html`
-  })
-
-  return appUrl
+  // downloading a remote release turns it into a cached one
+  return appManager._generateUrlForCachedRelease(release)
 }
 
-const showSplash = async (handler : any, windowTitle : string, service = 'Github') => {
+const showSplash = async (handler : any, windowTitle : string, repoUrl : string, targetVersion = 'latest', service = 'GitHub') => {
   let template = fs.readFileSync(__dirname+'/../electron/ui/splash.html', 'utf8')
 
   // replace the default title with identifier
@@ -118,16 +113,16 @@ const showSplash = async (handler : any, windowTitle : string, service = 'Github
   }
 
   template = template.replace('$app.info$', JSON.stringify({
-    name: serviceName,
+    name: repoUrl,
     logo: serviceLogo,
-    version: 'latest'
+    version: targetVersion
   }))
 
   let result = handler({ mimeType: 'text/html', data: Buffer.from(template) })
   return result
 }
 
-const showSplashAndDetectWebContents = (handler: any) : Promise<{webContents : Electron.WebContents, emitUpdate : (update : string) => void}> => new Promise(async (resolve, reject) => {
+const showSplashAndDetectWebContents = (handler: any, repoUrl: string, targetVersion? : string) : Promise<{webContents : Electron.WebContents, emitUpdate : (update : string) => void}> => new Promise(async (resolve, reject) => {
   // hack: id is used for window detection to get a mapping from app to window
   const windowId = Math.random().toString(26).slice(2)
   const windowTitle = `Electron App Manager - ${windowId}`
@@ -147,7 +142,7 @@ const showSplashAndDetectWebContents = (handler: any) : Promise<{webContents : E
   })
 
   // load the splash screen content this should trigger the above detector
-  await showSplash(handler, windowTitle)
+  await showSplash(handler, windowTitle, repoUrl, targetVersion)
 })
 
 // url.parse was not working reliably so we just use this
@@ -160,49 +155,70 @@ const removeQuery = (_url : string) => {
   return _url
 }
 
-const hotLoadProtocolHandler = async (fileUri : string, handler : any) => {
+const serveRequestFromCache = async (hostname : string, pathname : string) => {
+  const appManager = getAppManagerForVirtualHost(hostname)
+  if (appManager) {
+    // FIXME respect version
+    let release = await appManager.getLatestCached()
+    if (release) {
+      const entry = await appManager.getEntry(release, pathname)
+      if (entry) {
+        const content = await entry.file.readContent()
+        return content
+      } else {
+        console.log('HOT-LOAD WARNING: file not found in pkg', pathname)
+        return undefined
+        // return handler(-2)
+      }
+    } else {
+      console.log('release not found', hostname)
+    }
+  } else {
+    console.log('host with id', hostname, 'not found')
+  }
+}
 
-  // console.log('handle request', fileUri)
+const serveRequestFromCacheMem = memoize(serveRequestFromCache)
+
+const hotLoadProtocolHandler = async (request : string, handler : any) => {
+
+  // we can simulate a well-formed https request by adding http 
+  // even though this is the package:// handler
+  const pseudoHttpRequest = `https://${request}`
   
   // extract query params
-  const url_parts = url.parse(fileUri, true)
-  const query = url_parts.query
-  const targetVersion = (query && (typeof query.version === 'string') && query.string) || 'latest'
+  const url_parts = url.parse(pseudoHttpRequest, true)
+  let { hostname, pathname, query } = url_parts
+  const targetVersion : string = query && (typeof query.version === 'string') ? query.version : 'latest'
+  request = removeQuery(request)
 
-  // and remove query portion from url
-  fileUri = removeQuery(fileUri)
-
-  // loaded moduleId will have form :
-  // e23510c359fc83e91886f73a5518afc0.mod/0.8.5/index.html
-  // <hashed origin>/<version>/<resource path>
-  const parts = fileUri.split('/')
-  if (parts.length > 0 && parts[0] === '/'){
-    parts.shift() // remove leading /
+  if (!hostname) {
+    console.log('FATAL: could not parse hostname from request', request)
+    // https://code.google.com/p/chromium/codesearch#chromium/src/net/base/net_error_list.h
+    return handler(-2)
   }
-  let moduleId = parts.shift() as string
-  if (moduleId && moduleId.endsWith('.mod')) {
-    const loadedVersion = parts.shift()
-    if (loadedVersion) {
-      moduleId = md5(`${moduleId}/${loadedVersion}`)
+
+  if (!pathname) {
+    console.log('FATAL: could not parse pathname from request', request)
+    return handler(-2)
+  }
+
+  // if .mod domain it means a package was fetched, cached and loaded
+  // this can be considered a virtual host that exists as package in memory
+  // --> try to load resource from cached package
+  if (hostname.endsWith('.mod')) {
+    // console.log('serve resource from package', hostname, pathname)
+    if (pathname.startsWith('/')) {
+      pathname = pathname.slice(1)
     }
+    const content = await serveRequestFromCacheMem(hostname, pathname)
+    return handler(content || -2)
   }
-
-  if (ModuleRegistry.has(moduleId)) {
-    const relFilePath = parts.join('/')
-    const pkg = ModuleRegistry.getPackage(moduleId)
-    const entry = await pkg.getEntry(relFilePath)
-    if (entry) {
-      const content = await entry.file.readContent()
-      return handler(content)
-    } else {
-      console.log('HOT-LOAD WARNING: file not found in pkg', relFilePath)
-      return handler(-2)
-    }
-  }
-  // else load new module
-  const { webContents, emitUpdate } = await showSplashAndDetectWebContents(handler)
-  // @ts-ignore
-  const appUrl = await loadRemoteApp(`https://${fileUri}`, targetVersion, (app, progress) => {
+  
+  // else: find the correct package / app based on url and version
+  // display splash in meantime and forward request to .mod url when done 
+  const { webContents, emitUpdate } = await showSplashAndDetectWebContents(handler, request, targetVersion)
+  const appUrl = await loadRemoteApp(`https://${request}`, targetVersion, (app, progress) => {
     // update splash screen with loading progress
     const changes = {
       app,
@@ -211,7 +227,9 @@ const hotLoadProtocolHandler = async (fileUri : string, handler : any) => {
     let dataString = JSON.stringify(changes)
     emitUpdate(dataString)
   })
+  console.log('redirect to', appUrl)
   webContents.loadURL(appUrl)
+  // requests[request] = appUrl
   // webContents.openDevTools({ mode: 'detach' })
 }
 
