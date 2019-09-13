@@ -3,7 +3,7 @@ import { registerHotLoadProtocol } from './updater/lib/CustomProtocols';
 export {default as AppManager} from './updater/AppManager'
 export * from './updater/lib/downloader'
 
-export const registerPackageProtocol = () => {
+export const registerPackageProtocol = (cacheDir? : string) => {
   const { protocol, app } = require('electron')
   /**
    // https://github.com/electron/electron/blob/master/docs/api/protocol.md 
@@ -22,5 +22,5 @@ export const registerPackageProtocol = () => {
       { scheme: 'package', privileges: { standard: true, secure: true } }
     ])
   }
-  registerHotLoadProtocol()
+  registerHotLoadProtocol(cacheDir)
 }

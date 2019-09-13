@@ -1,6 +1,7 @@
 import fs from 'fs'
 import path from 'path'
 import url from 'url'
+import os from 'os'
 import { getRepository } from '../repositories'
 import { request, download } from '../lib/downloader'
 import { pkgsign } from 'ethpkg'
@@ -23,14 +24,16 @@ async function getZipUrl(_url : string){
 }
 
 let hosts : any = {}
+let cacheDir = path.join(process.cwd(), 'CACHE', 'Grid')
 
 const getAppManagerForUrl = (repoUrl : string) => {
-  console.log('get app manager for', repoUrl)
+  // console.log('get app manager for', repoUrl)
+  // console.log('create app manager with cache', cacheDir)
   return new AppManager({
     repository: repoUrl,
     auto: true,
     // FIXME we need to generate a subfolder folder for different apps for faster cache scan
-    cacheDir: `C:/Users/Philipp/AppData/Roaming/grid/app_cache/apps/${md5(repoUrl)}`
+    cacheDir: `${cacheDir}/${md5(repoUrl)}`
   })
 }
 
@@ -241,10 +244,11 @@ let isRegistered = false
  * this will only allow to read from one zip which is probably intended
  * it will also completely deactivate fs access for files outside the zip which could be a good thing 
  */
-export const registerHotLoadProtocol = () => {
+export const registerHotLoadProtocol = (_cacheDir? : string) => {
   if(isRegistered) {
     return `${scheme}:`
   }
+  cacheDir = _cacheDir ? _cacheDir : cacheDir
   protocol.registerProtocolHandler(scheme, hotLoadProtocolHandler, (error : any) => {
     if (error) console.error('Failed to register protocol')
   })

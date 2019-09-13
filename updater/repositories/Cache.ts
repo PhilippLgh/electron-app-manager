@@ -22,7 +22,9 @@ class Cache extends RepoBase implements IRepository {
     super()
     this.cacheDirPath = cacheDirPath
     if (!fs.existsSync(cacheDirPath)) {
-      fs.mkdirSync(cacheDirPath)
+      fs.mkdirSync(cacheDirPath, {
+        recursive: true
+      })
     }
     this.getPackageCached = memoize(this.getPackage.bind(this))
   }
