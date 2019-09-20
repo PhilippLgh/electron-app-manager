@@ -64,7 +64,7 @@ class Github extends RepoBase implements IRemoteRepository {
     const { name: assetName, browser_download_url: assetUrl, size, download_count } = asset
     const packageName = assetName && path.basename(assetName)
 
-    const name = packageName || releaseName || tag_name
+    const name = releaseName
 
     const platform = extractPlatform(name)
     const arch = extractArchitecture(name)
@@ -92,11 +92,33 @@ class Github extends RepoBase implements IRemoteRepository {
 
   private toRelease(releaseInfo : ReposListReleasesResponseItem) : Array<IRelease | IInvalidRelease> {
 
-    const { 
-      name : releaseName,
+    const {
+      /*
+      url,
+      assets_url,
+      html_url,
+      upload_url,
+      tarball_url,
+      zipball_url,
+      id,
+      node_id,
+      tag_name,
+      target_commitish,
+      name,
+      body,
+      draft,
+      prerelease,
+      created_at,
+      published_at,
+      author,
+      assets,
+      */
+      // name : releaseName,
       tag_name,
       target_commitish : branch
      } = releaseInfo
+
+     const releaseName = this.repo // use repo name as release name for stable origins
 
     const segments = tag_name.split('_')
     const versionTag = segments[0]
