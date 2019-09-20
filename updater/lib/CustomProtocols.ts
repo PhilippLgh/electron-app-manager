@@ -24,6 +24,7 @@ async function getZipUrl(_url : string){
 }
 
 let hosts : any = {}
+// TODO use better cache default
 let cacheDir = path.join(process.cwd(), 'CACHE', 'Grid')
 
 const getAppManagerForUrl = (repoUrl : string) => {
@@ -45,7 +46,7 @@ const getAppManagerForVirtualHost = (hostname : string) => {
 }
 
 
-export const loadRemoteApp = async (repoUrl : string, targetVersion : string, onProgress = (app : any, progress : number) => {}) => {
+export const loadRemoteApp = async (repoUrl : string, targetVersion? : string, onProgress = (app : any, progress : number) => {}) => {
   
   const appManager = getAppManagerForUrl(repoUrl)
 
@@ -55,8 +56,13 @@ export const loadRemoteApp = async (repoUrl : string, targetVersion : string, on
   // display info of newer version if it exists on remote
   // user can then restart or will have the update on next start
   // see https://serviceworke.rs/strategy-cache-update-and-refresh.html
-
-  let release = await appManager.getLatestCached(targetVersion)
+  if (targetVersion === 'latest') {
+    targetVersion = undefined
+  }
+  let release = await appManager.getLatestCached({
+    version: targetVersion
+  })
+  // console.log('get latest cached that satisfies', targetVersion, release)
   if (release) {
     const appUrl = await appManager._generateUrlForCachedRelease(release)
     // don't await updater routine
