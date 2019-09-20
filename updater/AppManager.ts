@@ -402,18 +402,18 @@ export default class AppManager extends RepoBase{
     return allReleases.sort(this.compareVersions)
   }
 
-  async getLatestCached(filter? : string){
+  async getLatestCached(options : IFetchOptions = {}){
     if (this.caches) {
-      let promises = this.caches.map(c => c.getLatest(filter))
+      let promises = this.caches.map(c => c.getLatest(options))
       let latest = await Promise.all(promises)
       return this._getLatest(latest)
     }
-    return this.cache.getLatest()
+    return this.cache.getLatest(options)
   }
 
   async getLatestRemote(options : IFetchOptions = {}){
     let { filter, download, verify } = options
-    let release = await this.remote.getLatest(filter)
+    let release = await this.remote.getLatest(options)
     if (release === null) {
       return null
     }
@@ -430,11 +430,14 @@ export default class AppManager extends RepoBase{
   }
 
   async getLatest(options : IFetchOptions = {}) : Promise<IRelease | null>{
-    const { filter, download, verify } = options
-    const latestCached = await this.getLatestCached(filter)
+    const { filter, download, verify, version } = options
+    const latestCached = await this.getLatestCached({
+      version
+    })
     const latestRemote = await this.getLatestRemote({
       filter,
       download: false,
+      version,
       verify
     })
     const latestHotLoaded = this.hotLoadedApp

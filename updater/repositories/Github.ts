@@ -238,7 +238,8 @@ class Github extends RepoBase implements IRemoteRepository {
 
   async getReleases({
     sort = true,
-    filterInvalid = true
+    filterInvalid = true,
+    version
   } : IFetchOptions = {} ) : Promise<Array<(IRelease | IInvalidRelease)>> {
     // FIXME use pagination
     try {
@@ -251,6 +252,11 @@ class Github extends RepoBase implements IRemoteRepository {
       let releases = releaseInfo.data.map(this.toRelease.bind(this)).reduce((prev, cur) => {
         return prev.concat(cur)
       })
+
+      if(version) {
+        // @ts-ignore
+        releases = releases.filter(release => semver.satisfies(semver.coerce(release.version).version, version))
+      }
 
       // filter invalid releases
       if (filterInvalid) {
@@ -269,14 +275,12 @@ class Github extends RepoBase implements IRemoteRepository {
     }
   }
 
-  async getLatest(filter? : string) : Promise<IRelease | IReleaseExtended | null>  {
+  async getLatest(options : IFetchOptions = {}) : Promise<IRelease | IReleaseExtended | null>  {
     // the latest uploaded release ( /latest api route ) is not necessarily the latest version
     // might only be a patch fix for previous version
-    let releases = await this.getReleases()
-    if(filter && typeof filter === 'string') {
-      // @ts-ignore
-      releases = releases.filter(release => semver.satisfies(release.version, filter))
-    }
+    let releases = await this.getReleases({
+      version: options.version
+    })
     if (releases.length <= 0) {
       return null
     }

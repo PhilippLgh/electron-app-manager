@@ -1,5 +1,5 @@
 import { IRelease, IInvalidRelease, IMetadata, IReleaseExtended } from '../api/IRelease'
-import { IRemoteRepository } from '../api/IRepository'
+import { IRemoteRepository, IFetchOptions } from '../api/IRepository'
 import RepoBase from '../api/RepoBase'
 import { download, downloadJson } from '../lib/downloader'
 import { getExtension, hasSupportedExtension, extractPlatform, extractArchitecture, simplifyVersion } from '../util'
@@ -118,7 +118,11 @@ class Azure extends RepoBase implements IRemoteRepository {
     return release
   }
 
-  async getReleases(): Promise<(IRelease | IInvalidRelease | IInvalidRelease)[]> {
+  async getReleases({
+    sort = true,
+    filterInvalid = true,
+    version
+  } : IFetchOptions = {}): Promise<(IRelease | IInvalidRelease | IInvalidRelease)[]> {
     // console.time('download')
     let result = await download(this.repoUrl)
     // console.timeEnd('download') // 1502.350ms
@@ -173,7 +177,11 @@ class Azure extends RepoBase implements IRemoteRepository {
       }
     });
 
-    // filter invalid versions?
+    // filter invalid versions
+    if(version) {
+      // @ts-ignore
+      releases = releases.filter(release => semver.satisfies(semver.coerce(release.version).version, version))
+    }
 
     /*
     signatures.forEach(signature => { });
@@ -189,12 +197,10 @@ class Azure extends RepoBase implements IRemoteRepository {
     return sorted
   }
 
-  async getLatest(filter? : string): Promise<IRelease | IReleaseExtended | null> {
-    let releases = await this.getReleases()
-    if(filter && typeof filter === 'string') {
-      // @ts-ignore
-      releases = releases.filter(release => semver.satisfies(semver.coerce(release.version).version, filter))
-    }
+  async getLatest(options : IFetchOptions = {}): Promise<IRelease | IReleaseExtended | null> {
+    let releases = await this.getReleases({
+      version: options.version
+    })
     if (releases.length <= 0) {
       return null
     }

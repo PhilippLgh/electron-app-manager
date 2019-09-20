@@ -94,8 +94,8 @@ export default class Bintray extends RepoBase implements IRemoteRepository {
     // console.log('package info', releases)
     return releases
   }
-  async getLatest(semverFilter?: string | undefined): Promise<IRelease | IReleaseExtended | null> {
-    const releases = await this.getReleases()
+  async getLatest(options : IFetchOptions = {}): Promise<IRelease | IReleaseExtended | null> {
+    const releases = await this.getReleases(options)
     // @ts-ignore
     return releases[0]
   }

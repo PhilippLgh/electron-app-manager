@@ -16,7 +16,7 @@ class Swarm extends RepoBase implements IRemoteRepository {
     throw new Error("Method not implemented.");
   }
 
-  async getLatest(filter? : string) : Promise<IRelease | IReleaseExtended | null>  {
+  async getLatest(options : IFetchOptions = {}) : Promise<IRelease | IReleaseExtended | null>  {
     return {
       name: 'test',
       displayName: 'test',

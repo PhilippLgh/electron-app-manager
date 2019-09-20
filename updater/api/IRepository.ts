@@ -26,7 +26,7 @@ export interface IRepository {
   
   getReleases(options? : IFetchOptions): Promise<Array<(IRelease | IInvalidRelease)>>;
 
-  getLatest(semverFilter? : string): Promise<IRelease | IReleaseExtended | null>;
+  getLatest(options? : IFetchOptions): Promise<IRelease | IReleaseExtended | null>;
 
 }
 

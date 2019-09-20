@@ -3,6 +3,7 @@ import { IRepository, IFetchOptions } from '../api/IRepository'
 import RepoBase from '../api/RepoBase'
 import fs from 'fs'
 import path from 'path'
+import semver from 'semver'
 
 import { verifyPGP, checksumMd5 } from '../tasks/verify'
 import AppPackage from '../AppPackage'
@@ -98,7 +99,8 @@ class Cache extends RepoBase implements IRepository {
   }
 
   async getReleases({
-    sort = true
+    sort = true,
+    version = undefined
   } : IFetchOptions = {}): Promise<Array<(IRelease | IInvalidRelease)>> {
     let files = fs.readdirSync(this.cacheDirPath)
     files = files.filter(hasSupportedExtension)
@@ -109,6 +111,11 @@ class Cache extends RepoBase implements IRepository {
 
     let releases = files.map(async (file : string) => this.toRelease(file))
     releases = await Promise.all(releases)
+
+    if(version) {
+      // @ts-ignore
+      releases = releases.filter(release => semver.satisfies(semver.coerce(release.version).version, version))
+    }
 
     let faulty = releases.filter(release => ('error' in release))
     if (faulty && faulty.length > 0) {
@@ -121,11 +128,10 @@ class Cache extends RepoBase implements IRepository {
     return sort ? releases.sort(this.compareVersions) : releases
   }
   
-  async getLatest(filter? : string) : Promise<IRelease | IReleaseExtended | null>  {
-    if (filter) {
-      console.warn('filters are ignored for cache: ', filter)
-    }
-    const releases = await this.getReleases() as Array<IRelease>
+  async getLatest(options : IFetchOptions = {}) : Promise<IRelease | IReleaseExtended | null>  {
+    let releases = await this.getReleases({
+      version: options.version
+    }) as Array<IRelease>
     const filtered = releases.filter(r => !('error' in r))
     if (filtered.length === 0) {
       return null;
