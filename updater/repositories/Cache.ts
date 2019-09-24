@@ -49,7 +49,9 @@ class Cache extends RepoBase implements IRepository {
     }
 
     let release = {
-      name,
+      // FIX: name must not be a different one across remote / local strategies
+      // in order to have stable generated origins
+      // name,
       fileName,
       location
     } as any
