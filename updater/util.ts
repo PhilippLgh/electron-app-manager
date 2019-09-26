@@ -90,6 +90,9 @@ export function extractArchitecture(str : string){
       if (str === 'arm64') {
         return ARCH.ARM64
       }
+      if (str === 'amd64') {
+        return ARCH.ARM64;
+      }
       if (str === 'arm') {
         return ARCH.ARM32
       }
