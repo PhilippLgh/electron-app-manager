@@ -1,6 +1,5 @@
 import GithubRepo from './Github'
 import AzureRepo from './Azure'
-import SwarmRepo from './Swarm'
 import BintrayRepo from './Bintray'
 import { IRelease } from '../api/IRelease'
 
@@ -37,9 +36,11 @@ export const getRepository = (urlString : string, modifiers? : any, filter? : an
       })
     }
   }
+  /*
   else if(urlString.includes('bzz:')){
     return new SwarmRepo(urlString)
   }
+  */
   else {
     throw new Error('No repository strategy found for url: ' + urlString)
   }
