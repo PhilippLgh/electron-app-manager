@@ -34,10 +34,6 @@ export interface IFetchOptionsRelease {
 
 export interface IRepository {
   name : string;
+  repositoryUrl?: string;
   getReleases(): Promise<Array<(IRelease | IInvalidRelease)>>;
-}
-
-export interface IRemoteRepository extends IRepository {
-  repositoryUrl: string;
-  download(release : IRelease, onProgress? : Function) : Promise<Buffer>
 }
