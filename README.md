@@ -84,10 +84,14 @@ It creates a new AppManager managing zero or more caches and exactly one reposit
   - `repository` String -- Url or path to a repository that stores releases
   - `cacheDir` String -- Path to a folder where cached files are stored.
 
+## Events
+
+### update-progress
+
 ## Methods
 
 It clears the cache
-#### `async clearCache()`
+#### `async clearCache() : void`
 
 ---
 
@@ -101,8 +105,13 @@ It returns the latest release from repository or cache matching `options`
 
 ---
 
+It loads a release so that it can be served from memory
+#### `public async load(release : IRelease, protocol : string) : Promise<string | undefined>`
+
+---
+
 It downloads the release assets specified by `release`
-#### `async download(release : IRelease, downloadOptions : IDownloadOptions) : `
+#### `async download(release : IRelease, downloadOptions : IDownloadOptions) : : Promise<IRelease>`
 
 ---
 
