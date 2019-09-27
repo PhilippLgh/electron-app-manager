@@ -1,14 +1,11 @@
-import { IRelease, IInvalidRelease, IReleaseExtended } from '../api/IRelease'
-import { IRepository, IFetchOptions } from '../api/IRepository'
+import { IRelease, IInvalidRelease } from '../api/IRelease'
+import { IRepository } from '../api/IRepository'
 import RepoBase from '../api/RepoBase'
 import fs from 'fs'
 import path from 'path'
-import semver from 'semver'
 
-import { verifyPGP, checksumMd5 } from '../tasks/verify'
 import AppPackage from '../AppPackage'
-import { getExtension, hasSupportedExtension, memoize } from '../util'
-import { pkgsign as ethpkg } from 'ethpkg'
+import { hasSupportedExtension, memoize } from '../util'
 
 // for different caching strategies see
 // https://serviceworke.rs/caching-strategies.html
@@ -37,7 +34,7 @@ class Cache extends RepoBase implements IRepository {
     }
   }
 
-  async toRelease(fileName : string){
+  async toRelease(fileName : string) : Promise<IRelease | IInvalidRelease> {
     const name = path.parse(fileName).name
     const location = path.join(this.cacheDirPath, fileName)
 
@@ -69,7 +66,7 @@ class Cache extends RepoBase implements IRepository {
     if (appPackage === undefined) {
       return {
         name,
-        error: new Error('Could not parse package '+ release.location)
+        error: 'Could not parse package '+ release.location
       }
     }
     const metadata = await appPackage.getMetadata()
@@ -94,53 +91,25 @@ class Cache extends RepoBase implements IRepository {
       ...release,
       extractedPackagePath,
       verificationResult,
+      // TODO ? repository = 'Cache'
       remote: false
     }
 
     return release
   }
 
-  async getReleases({
-    sort = true,
-    version = undefined
-  } : IFetchOptions = {}): Promise<Array<(IRelease | IInvalidRelease)>> {
+  async getReleases(): Promise<Array<(IRelease | IInvalidRelease)>> {
     let files = fs.readdirSync(this.cacheDirPath)
     files = files.filter(hasSupportedExtension)
     const filesFound = files && files.length > 0
     if(!filesFound){
       return []
     }
-
-    let releases = files.map(async (file : string) => this.toRelease(file))
-    releases = await Promise.all(releases)
-
-    if(version) {
-      // @ts-ignore
-      releases = releases.filter(release => semver.satisfies(semver.coerce(release.version).version, version))
-    }
-
-    let faulty = releases.filter(release => ('error' in release))
-    if (faulty && faulty.length > 0) {
-      console.log(`detected ${faulty.length} corrupted releases in cache`)
-    }
-
-    releases = releases.filter(release => !('error' in release))
-
-    // @ts-ignore
-    return sort ? releases.sort(this.compareVersions) : releases
+    const promises = files.map(async (file : string) => this.toRelease(file))
+    const releases = await Promise.all(promises)
+    return releases
   }
   
-  async getLatest(options : IFetchOptions = {}) : Promise<IRelease | IReleaseExtended | null>  {
-    let releases = await this.getReleases({
-      version: options.version
-    }) as Array<IRelease>
-    const filtered = releases.filter(r => !('error' in r))
-    if (filtered.length === 0) {
-      return null;
-    }
-    filtered[0].repository = 'Cache'
-    return filtered[0]
-  }
   async getPackage(release : IRelease) {
     console.time('load '+release.location)
     const appPackage = await new AppPackage(release.location).init()
