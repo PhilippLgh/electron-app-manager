@@ -1,5 +1,5 @@
 import { IRelease, IInvalidRelease, IMetadata, IReleaseExtended } from '../api/IRelease'
-import { IRemoteRepository } from '../api/IRepository'
+import { IRepository } from '../api/IRepository'
 import RepoBase from '../api/RepoBase'
 import { download } from '../lib/downloader'
 import { getExtension, hasSupportedExtension, extractPlatform, extractArchitecture, simplifyVersion } from '../util'
@@ -18,7 +18,7 @@ interface AzureBlob {
 }
 
 // https://docs.microsoft.com/en-us/rest/api/storageservices/blob-service-rest-api
-class Azure extends RepoBase implements IRemoteRepository {
+class Azure extends RepoBase implements IRepository {
   
   repoUrl: string;
   onReleaseParsed: Function;
