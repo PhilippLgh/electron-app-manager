@@ -1,5 +1,5 @@
 import { IRelease, IInvalidRelease, IMetadata, IReleaseExtended } from '../api/IRelease'
-import { IRemoteRepository } from '../api/IRepository'
+import { IRepository } from '../api/IRepository'
 import RepoBase from '../api/RepoBase'
 // @ts-ignore
 import { download, downloadJson } from '../lib/downloader'
@@ -15,7 +15,7 @@ interface IAsset {
   download_count: number
 }
 
-class Github extends RepoBase implements IRemoteRepository {
+class Github extends RepoBase implements IRepository {
   
   private client: GitHub;
   private _repositoryUrl: string;
@@ -254,13 +254,6 @@ class Github extends RepoBase implements IRemoteRepository {
       return []
     }
   }
-
-  async download(release: IRelease, onProgress = (progress : number) => {}): Promise<Buffer> {
-    const { location } = release;
-    const data = await download(location, onProgress);
-    return data;
-  }  
-
 }
 
 export default Github
