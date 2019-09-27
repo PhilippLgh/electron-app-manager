@@ -1,10 +1,8 @@
 import { IRelease, IInvalidRelease, IMetadata, IReleaseExtended } from '../api/IRelease'
-import { IRemoteRepository, IFetchOptions } from '../api/IRepository'
+import { IRemoteRepository } from '../api/IRepository'
 import RepoBase from '../api/RepoBase'
-import { download, downloadJson } from '../lib/downloader'
+import { download } from '../lib/downloader'
 import { getExtension, hasSupportedExtension, extractPlatform, extractArchitecture, simplifyVersion } from '../util'
-import path from 'path'
-import url from 'url'
 import semver from 'semver'
 
 const { extractVersion, parseXml } = require('../util')
@@ -18,8 +16,6 @@ interface AzureBlob {
     'Content-MD5': Array<string>
   }>
 }
-
-const SUPPORTED_EXTENSIONS = ['.zip', '.tar.gz', '.tar']
 
 // https://docs.microsoft.com/en-us/rest/api/storageservices/blob-service-rest-api
 class Azure extends RepoBase implements IRemoteRepository {
@@ -118,11 +114,7 @@ class Azure extends RepoBase implements IRemoteRepository {
     return release
   }
 
-  async getReleases({
-    sort = true,
-    filterInvalid = true,
-    version
-  } : IFetchOptions = {}): Promise<(IRelease | IInvalidRelease | IInvalidRelease)[]> {
+  async getReleases(): Promise<(IRelease | IInvalidRelease | IInvalidRelease)[]> {
     // console.time('download')
     let result = await download(this.repoUrl)
     // console.timeEnd('download') // 1502.350ms
@@ -143,7 +135,7 @@ class Azure extends RepoBase implements IRemoteRepository {
     let releases = blobs.map(this.toRelease)
     // console.timeEnd('convert') // 11.369ms
 
-    // scan to create client specific mapping ansd filter
+    // scan to create client specific mapping and filter
     let mapping : {[index : string] : IRelease } = {}
     const packages : any = []
     releases.forEach((release : IRelease) => {
@@ -177,12 +169,6 @@ class Azure extends RepoBase implements IRemoteRepository {
       }
     });
 
-    // filter invalid versions
-    if(version) {
-      // @ts-ignore
-      releases = releases.filter(release => semver.satisfies(semver.coerce(release.version).version, version))
-    }
-
     /*
     signatures.forEach(signature => { });
     const packages = releases
@@ -195,23 +181,6 @@ class Azure extends RepoBase implements IRemoteRepository {
     let sorted = packages.sort(this.compareVersions)
 
     return sorted
-  }
-
-  async getLatest(options : IFetchOptions = {}): Promise<IRelease | IReleaseExtended | null> {
-    let releases = await this.getReleases({
-      version: options.version
-    })
-    if (releases.length <= 0) {
-      return null
-    }
-    const release = releases[0] as any
-    if (release.signature){
-      const signatureData = await download(release.signature)
-      if (signatureData) {
-        release.signature = signatureData.toString()
-      }
-    }
-    return release
   }
 
   async download(release : IRelease, onProgress = (progress : number) => {}) : Promise<Buffer> {
