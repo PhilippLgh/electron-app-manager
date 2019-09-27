@@ -1,9 +1,12 @@
+import { EventEmitter } from 'events'
 import Cache from './repositories/Cache'
 import { IRepository, IFetchOptionsReleaseList, IFetchOptionsRelease, IDownloadOptions } from './api/IRepository'
 import { getRepository } from './repositories'
-import { compareVersions } from './util'
+import { compareVersions, getEthpkg } from './util'
 import { IRelease, IInvalidRelease } from './api/IRelease'
 import semver from 'semver'
+import { download } from './lib/downloader'
+import { pkgsign } from 'ethpkg'
 
 export interface IAppManagerOptions {
   repository?: string;
@@ -22,7 +25,7 @@ export const LOGLEVEL = {
   VERBOSE: 2
 }
 
-export default class AppManager {
+export default class AppManager extends EventEmitter {
 
   loglevel = LOGLEVEL.NORMAL;
   remote?: IRepository;
@@ -32,6 +35,8 @@ export default class AppManager {
     repository,
     cacheDir
   } : IAppManagerOptions){
+
+    super()
 
     if (repository) {
       this.remote = getRepository(repository)
@@ -65,7 +70,7 @@ export default class AppManager {
   /**
    * Returns all cached releases
    */
-  private async getReleasesCached(options? : IFetchOptionsReleaseList) : Promise<Array<IRelease | IInvalidRelease>> {
+  private async getReleasesCached() : Promise<Array<IRelease | IInvalidRelease>> {
     if (!this.cache) {
       console.warn('Accessing an uninitialized Cache: getReleases()')
       return []
@@ -77,7 +82,7 @@ export default class AppManager {
   /**
    * Returns all remote releases
    */
-  private async getReleasesRemote(options? : IFetchOptionsReleaseList) : Promise<Array<IRelease | IInvalidRelease>> {
+  private async getReleasesRemote() : Promise<Array<IRelease | IInvalidRelease>> {
     if (!this.remote) {
       console.warn('Accessing an uninitialized Repository: getReleases()')
       return []
@@ -133,6 +138,10 @@ export default class AppManager {
     return releases
   }
 
+  /**
+   * 
+   * @param fetchOptions
+   */
   public async getLatest({
     onlyCache = false,
     onlyRemote = false,
@@ -184,13 +193,53 @@ export default class AppManager {
   /**
    * 
    */
-  public async load() {
+  public async load(release : IRelease, protocol : string) : Promise<string | undefined> {
+    if (release.remote) {
 
+    }
+    return
   }
 
-  public async download(release : IRelease, downloadOptions : IDownloadOptions = {}) {
-    // const data = await download(location, onProgress);
+  public async download(release : IRelease, {
+    onProgress = (progress : number, release?: IRelease) => {},
+    writePackageData = true
+  } : IDownloadOptions = {}) : Promise<IRelease> {
+
+    // wrap onProgress
+    let pp = 0;
+    const _onProgress = (p : number) => {
+      const pn = Math.floor(p * 100);
+      if (pn > pp) {
+        pp = pn;
+        // console.log(`downloading update..  ${pn}%`)
+        this.emit('update-progress', release, pn)
+        if (onProgress) {
+          onProgress(pn, release)
+        }
+      }
+    }
+
+    // download release data / asset
+    const { location } = release
+    const packageData = await download(location, _onProgress)
+
+    // verify package signature: TODO we can enforce a policy here that invalid
+    // packages are not even written to disk
+    const pkg = await getEthpkg(packageData)
+    const verificationResult = await pkgsign.verify(pkg!)
+
     // 
+    if (writePackageData) {
+    }
+
+    this.emit('update-downloaded', release)
+    return {
+      ...release,
+      location: 'memory',
+      remote: false,
+      verificationResult,
+      data: packageData
+    }
   }
 
   /*
