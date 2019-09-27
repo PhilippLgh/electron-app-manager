@@ -1,5 +1,5 @@
 import { IRelease, IInvalidRelease, IMetadata, IReleaseExtended } from '../api/IRelease'
-import { IRemoteRepository, IFetchOptions } from '../api/IRepository'
+import { IRemoteRepository } from '../api/IRepository'
 import RepoBase from '../api/RepoBase'
 // @ts-ignore
 import { download, downloadJson } from '../lib/downloader'
@@ -227,74 +227,32 @@ class Github extends RepoBase implements IRemoteRepository {
     }
   }
 
-  /*
-  async getChannels() {
-    let releases = this.getReleases();
-    let channelsAll = releases.map(release => release.channel);
-    const channels = new Set(channelsAll);
-    return channels;
-  }
-  */
-
-  async getReleases({
-    sort = true,
-    filterInvalid = true,
-    version
-  } : IFetchOptions = {} ) : Promise<Array<(IRelease | IInvalidRelease)>> {
+  async getReleases() : Promise<Array<(IRelease | IInvalidRelease)>> {
     // FIXME use pagination
     try {
       let releaseInfo = await this.client.repos.listReleases({
         owner: this.owner,
-        repo: this.repo
+        repo: this.repo,
+        /**
+         * Results per page (max 100)
+         */
+        // per_page?: number;
+        /**
+         * Page number of the results to fetch.
+         */
+        // page?: number;
       })
-
-      // convert to proper format
+      // convert to IRelease list
       let releases = releaseInfo.data.map(this.toRelease.bind(this)).reduce((prev, cur) => {
         return prev.concat(cur)
       })
-
-      if(version) {
-        // @ts-ignore
-        releases = releases.filter(release => semver.satisfies(semver.coerce(release.version).version, version))
-      }
-
-      // filter invalid releases
-      if (filterInvalid) {
-        releases = releases.filter(isRelease)
-      }
-
-      // @ts-ignore generate test data
       // console.log('latest releases unsorted\n', releases.map(r => `{ version: '${r.version}', channel: '${r.channel}' }`).slice(0, 5).join(',\n'))
-
-      return sort ? this.sortReleases(releases) : releases
-
+      return releases
     } catch (error) {
       console.log('could not retrieve releases list from github', error.message)
       // FIXME handle API errors such as rate-limits
       return []
     }
-  }
-
-  async getLatest(options : IFetchOptions = {}) : Promise<IRelease | IReleaseExtended | null>  {
-    // the latest uploaded release ( /latest api route ) is not necessarily the latest version
-    // might only be a patch fix for previous version
-    let releases = await this.getReleases({
-      version: options.version
-    })
-    if (releases.length <= 0) {
-      return null
-    }
-    let temp = releases[0]
-    // is invalid release
-    if(temp.error !== undefined){
-      return null
-    }
-    let latest = temp as IRelease;
-    let release = await this.extendWithMetadata(latest)
-    if(release.error){
-      return null
-    }
-    return release as IRelease
   }
 
   async download(release: IRelease, onProgress = (progress : number) => {}): Promise<Buffer> {
