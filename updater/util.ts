@@ -97,7 +97,7 @@ export function extractArchitecture(str : string){
         return ARCH.ARM32
       }
     }
-    return ARCH.B32    
+    return undefined  
   } catch (error) {
     return undefined
   }
