@@ -3,17 +3,18 @@ export interface IReleaseBase {
   error: string | void;     // only set when invalid
 }
 
-export interface IInvalidRelease extends IReleaseBase {
+export interface IInvalidRelease {
+  name?: string;
   error: string;
 }
 
-export interface IRelease extends IReleaseBase {
+export interface IRelease {
   name: string;
+  version: string;
   displayName: string;
   fileName: string;
   commit: string | void,
   publishedDate: Date;
-  version: string;
   displayVersion: string,
   platform?: string,
   arch?: string,
