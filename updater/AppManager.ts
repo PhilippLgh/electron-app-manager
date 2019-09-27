@@ -1,11 +1,9 @@
-import os, { release } from 'os'
 import Cache from './repositories/Cache'
-import { IFetchOptionsReleaseList, IRemoteRepository, IFetchOptionsRelease } from './api/IRepository'
+import { IRepository, IFetchOptionsReleaseList, IFetchOptionsRelease, IDownloadOptions } from './api/IRepository'
 import { getRepository } from './repositories'
 import { compareVersions } from './util'
 import { IRelease, IInvalidRelease } from './api/IRelease'
 import semver from 'semver'
-
 
 export interface IAppManagerOptions {
   repository?: string;
@@ -27,7 +25,7 @@ export const LOGLEVEL = {
 export default class AppManager {
 
   loglevel = LOGLEVEL.NORMAL;
-  remote?: IRemoteRepository;
+  remote?: IRepository;
   cache?: Cache;
 
   constructor({
@@ -112,8 +110,8 @@ export default class AppManager {
         if (!('version' in release)) {
           return false
         }
-        let coercedVersion = semver.coerce(release.version)
-        let release_version = coercedVersion ? coercedVersion.version : release.version
+        const coercedVersion = semver.coerce(release.version)
+        const release_version = coercedVersion ? coercedVersion.version : release.version
         return semver.satisfies(release_version, version)
       })
     }
@@ -149,6 +147,8 @@ export default class AppManager {
       sort: true
     }) as Array<IRelease>
 
+    let latest = undefined
+
     if (releases.length > 0) {
 
       // handle the common case of remote and local  (cached)
@@ -156,22 +156,41 @@ export default class AppManager {
       if (releases.length > 1) {
         if (releases[0].version === releases[1].version) {
           if(releases[0].remote && !releases[1].remote) {
-            return releases[1]
+            latest = releases[1]
           }
         }
       }
 
-      // TODO ? extendWithMetdata()
-      return releases[0]
+      latest = releases[0]
     }
+
+    if (!latest) return undefined
+
+    // TODO ? 
+    // extendWithMetdata()
+
+    /*TODO
+    if (release.signature){
+      const signatureData = await download(release.signature)
+      if (signatureData) {
+        release.signature = signatureData.toString()
+      }
+    }
+    */
     
-    return undefined
+    return latest
   }
 
-  public async load(){}
+  /**
+   * 
+   */
+  public async load() {
 
-  public async download(release : IRelease, downloadOptions : IDownloadOptions = {} ) {
+  }
 
+  public async download(release : IRelease, downloadOptions : IDownloadOptions = {}) {
+    // const data = await download(location, onProgress);
+    // 
   }
 
   /*
