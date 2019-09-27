@@ -1,9 +1,9 @@
-import { IRelease, IInvalidRelease, IMetadata, IReleaseExtended } from '../api/IRelease'
-import { IRemoteRepository, IFetchOptions } from '../api/IRepository'
-import { download, downloadJson } from '../lib/downloader'
+import { IRelease, IInvalidRelease } from '../api/IRelease'
+import { IRepository } from '../api/IRepository'
+import { downloadJson } from '../lib/downloader'
 import RepoBase from '../api/RepoBase'
 
-export default class Bintray extends RepoBase implements IRemoteRepository {
+export default class Bintray extends RepoBase implements IRepository {
 
   name: string;
   repositoryUrl: string;  
@@ -75,7 +75,7 @@ export default class Bintray extends RepoBase implements IRemoteRepository {
       }
   }
   
-  async getReleases(options?: IFetchOptions | undefined): Promise<(IRelease | IInvalidRelease)[]> {
+  async getReleases(): Promise<(IRelease | IInvalidRelease)[]> {
     // https://bintray.com/docs/api/#_get_package_files does not seem to have prefix option
     const infoUrl = `https://api.bintray.com/packages/${this.subject}/${this.repoName}/${this.packageName}/files`
     const packageInfo = await downloadJson(infoUrl)
@@ -94,20 +94,5 @@ export default class Bintray extends RepoBase implements IRemoteRepository {
     // console.log('package info', releases)
     return releases
   }
-  async getLatest(options : IFetchOptions = {}): Promise<IRelease | IReleaseExtended | null> {
-    const releases = await this.getReleases(options)
-    // @ts-ignore
-    return releases[0]
-  }
-  async download(release: IRelease, onProgress = (progress : number) => {}): Promise<Buffer> {
-    const { location } = release;
-    console.log('download file from', location)
-    try {
-      const data = await download(location, onProgress);
-      return data;
-    } catch (error) {
-      console.log('error during download', error)      
-    }
-    return Buffer.from('')
-  }
+
 }
