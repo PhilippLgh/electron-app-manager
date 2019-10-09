@@ -17,6 +17,8 @@ export interface IFetchOptionsReleaseList {
   onlyRemote?: boolean, // consider only remote / hosted releases
   version?: string, // semver filter
   sort?: boolean, // sort release list by version
+  timeout?: number // time in ms for request timeouts
+  prefix? : string // server-side processed name filter
 
   filter? : string,
   cached?: boolean, // http response caching
@@ -35,5 +37,5 @@ export interface IFetchOptionsRelease {
 export interface IRepository {
   name : string;
   repositoryUrl?: string;
-  getReleases(): Promise<Array<(IRelease | IInvalidRelease)>>;
+  getReleases(prefix? : string, timeout? : number): Promise<Array<(IRelease | IInvalidRelease)>>;
 }
