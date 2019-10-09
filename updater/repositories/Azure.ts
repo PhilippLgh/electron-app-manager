@@ -25,12 +25,13 @@ class Azure extends RepoBase implements IRepository {
 
   public name: string = 'Azure';
   filter: Function;
+  prefix?: string;
 
   constructor(repoUrl : string, options : any = {}){
     super()
     const { prefix } = options
     // FIXME check that only host name provided or parse
-    this.repoUrl = repoUrl + '/builds?restype=container&comp=list' + (prefix ? `&prefix=${prefix}` : '')
+    this.repoUrl = repoUrl + '/builds?restype=container&comp=list'
     this.onReleaseParsed = options && options.onReleaseParsed
     this.filter = options && options.filter
     this.toRelease = this.toRelease.bind(this)
@@ -114,9 +115,10 @@ class Azure extends RepoBase implements IRepository {
     return release
   }
 
-  async getReleases(): Promise<(IRelease | IInvalidRelease | IInvalidRelease)[]> {
+  async getReleases(prefix? : string): Promise<(IRelease | IInvalidRelease | IInvalidRelease)[]> {
     // console.time('download')
-    let result = await download(this.repoUrl)
+    const parameterizedUrl = this.repoUrl + (prefix ? `&prefix=${prefix}` : '')
+    const result = await download(parameterizedUrl)
     // console.timeEnd('download') // 1502.350ms
     // console.time('parse')
     let parsed
