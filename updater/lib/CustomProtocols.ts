@@ -23,7 +23,7 @@ async function getZipUrl(_url : string){
   return _url
 }
 
-let hosts : any = {}
+// let hosts : any = {}
 // TODO use better cache default
 let cacheDir = path.join(process.cwd(), 'CACHE', 'Grid')
 
@@ -38,12 +38,14 @@ const getAppManagerForUrl = (repoUrl : string) => {
   })
 }
 
+/*
 const getAppManagerForVirtualHost = (hostname : string) => {
   if (!hosts[hostname]) {
     console.log('host not found', hostname, Object.keys(hosts))
   }
   return hosts[hostname]
 }
+*/
 
 
 export const loadRemoteApp = async (repoUrl : string, targetVersion? : string, onProgress = (app : any, progress : number) => {}) => {
@@ -59,7 +61,10 @@ export const loadRemoteApp = async (repoUrl : string, targetVersion? : string, o
   if (targetVersion === 'latest') {
     targetVersion = undefined
   }
-  let release = await appManager.getLatestCached({
+
+  /*
+  let release = await appManager.getLatest({
+    onlyCache: true,
     version: targetVersion
   })
   // console.log('get latest cached that satisfies', targetVersion, release)
@@ -79,15 +84,7 @@ export const loadRemoteApp = async (repoUrl : string, targetVersion? : string, o
     return appUrl
   } 
 
-  // else nothing in cache -> try to fetch from remote
-  release = await appManager.getLatestRemote({ 
-    version: targetVersion,
-    download: true,
-    downloadOptions: {
-      writePackageData: true, // will write data to cache
-      onProgress: (progress, release) => onProgress(release, progress)
-    }
-  })
+
 
   if (!release) {
     // TODO display error
@@ -102,6 +99,8 @@ export const loadRemoteApp = async (repoUrl : string, targetVersion? : string, o
 
   // downloading a remote release turns it into a cached one
   return appManager._generateUrlForCachedRelease(release)
+  */
+  return appManager.load(targetVersion, 'package')
 }
 
 const showSplash = async (handler : any, windowTitle : string, repoUrl : string, targetVersion = 'latest', service = 'GitHub') => {
@@ -164,31 +163,6 @@ const removeQuery = (_url : string) => {
   return _url
 }
 
-const serveRequestFromCache = async (hostname : string, pathname : string) => {
-  const appManager = getAppManagerForVirtualHost(hostname)
-  if (appManager) {
-    // FIXME respect version
-    let release = await appManager.getLatestCached()
-    if (release) {
-      const entry = await appManager.getEntry(release, pathname)
-      if (entry) {
-        const content = await entry.file.readContent()
-        return content
-      } else {
-        console.log('HOT-LOAD WARNING: file not found in pkg', pathname)
-        return undefined
-        // return handler(-2)
-      }
-    } else {
-      console.log('release not found', hostname)
-    }
-  } else {
-    console.log('host with id', hostname, 'not found')
-  }
-}
-
-const serveRequestFromCacheMem = memoize(serveRequestFromCache)
-
 const hotLoadProtocolHandler = async (request : string, handler : any) => {
 
   // we can simulate a well-formed https request by adding http 
@@ -220,7 +194,8 @@ const hotLoadProtocolHandler = async (request : string, handler : any) => {
     if (pathname.startsWith('/')) {
       pathname = pathname.slice(1)
     }
-    const content = await serveRequestFromCacheMem(hostname, pathname)
+    const appManager = new AppManager()
+    const content = await appManager.getResource(hostname, pathname)
     return handler(content || -2)
   }
   
@@ -237,6 +212,11 @@ const hotLoadProtocolHandler = async (request : string, handler : any) => {
     emitUpdate(dataString)
   })
   console.log('redirect to', appUrl)
+  if (!appUrl) {
+    // FIXME handle
+    // return handler(-2)
+    return
+  }
   webContents.loadURL(appUrl)
   // requests[request] = appUrl
   // webContents.openDevTools({ mode: 'detach' })
