@@ -1,3 +1,5 @@
+import { IVerificationResult } from "ethpkg/dist/IVerificationResult"
+
 export interface IReleaseBase {
   name: string;
   error: string | void;     // only set when invalid
@@ -30,6 +32,12 @@ export interface IRelease {
   metadata?: string // url
   remote: boolean
 }
+
+export interface IVerifiedRelease extends IRelease {
+  verificationResult: IVerificationResult, // TODO use proper typing
+  data: Buffer
+}
+
 
 export interface IMetadata {
   name: string,
