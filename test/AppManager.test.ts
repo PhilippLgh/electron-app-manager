@@ -1,5 +1,5 @@
 import { assert } from 'chai'
-import AppManager from '../updater/AppManager'
+import AppManager from '../src/AppManager'
 
 describe('App Manager', () => {
 

@@ -5,10 +5,20 @@
   "main": "dist/index.js",
   "scripts": {
     "prepare": "yarn build",
-    "test": "mocha --require ts-node/register test/AppPackage.test.ts",
-    "test:all": "mocha --require ts-node/register test/**/*.ts",
+    "test": "nyc mocha",
     "static-files": "copyfiles updater/electron/ui/splash.html updater/electron/ui/preload.js dist/",
     "build": "yarn static-files && tsc -p ./tsconfig.json"
+  },
+  "nyc": {
+    "extension": [
+      ".ts",
+      ".tsx"
+    ],
+    "exclude": [
+      "**/test/",
+      "**/*.d.ts"
+    ],
+    "all": true
   },
   "author": "",
   "license": "ISC",
