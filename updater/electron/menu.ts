@@ -156,16 +156,16 @@ export const createCheckUpdateMenu = (currentVersion: string, getLatest: Functio
 export const createMenu = async (
   name: string, 
   version : string, 
-  repo : IRepository,
+  appManager : AppManager,
   onSwitchVersion: Function
 ) => {
 
-  const releases = await repo.getReleases()
+  const releases : Array<any> = [] // FIXME await appManager.getReleases()
 
   const sub = {
     label: name,
     submenu: [
-      createCheckUpdateMenu(version, repo.getLatest.bind(repo)),
+      // FIXME createCheckUpdateMenu(version, appManager.getLatest.bind(appManager)),
       { type: 'separator' },
       {
         label: 'Switch Version',
@@ -205,10 +205,6 @@ class MenuBuilder {
   constructor(appManager : AppManager) {
     this.appManager = appManager
   }
-  
-  
-  
- 
 
   async createMenuTemplate(onReload: Function) {
     if(this.menuTemplate){
@@ -234,7 +230,13 @@ class MenuBuilder {
         { type: 'separator' },
         {
           label: 'Open Cache',
-          click: async () => { shell.showItemInFolder(this.appManager.cacheDir) }
+          click: async () => {
+            /*
+            if (this.appManager.cacheDir) {
+              shell.showItemInFolder(this.appManager.cacheDir) 
+            } // TODO else
+            */
+          }
         },
         { type: 'separator' },
         {

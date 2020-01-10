@@ -1,19 +1,22 @@
+import { IVerificationResult } from "ethpkg/dist/IVerificationResult"
+
 export interface IReleaseBase {
   name: string;
   error: string | void;     // only set when invalid
 }
 
-export interface IInvalidRelease extends IReleaseBase {
+export interface IInvalidRelease {
+  name?: string;
   error: string;
 }
 
-export interface IRelease extends IReleaseBase {
+export interface IRelease {
   name: string;
+  version: string;
   displayName: string;
   fileName: string;
   commit: string | void,
   publishedDate: Date;
-  version: string;
   displayVersion: string,
   platform?: string,
   arch?: string,
@@ -29,6 +32,12 @@ export interface IRelease extends IReleaseBase {
   metadata?: string // url
   remote: boolean
 }
+
+export interface IVerifiedRelease extends IRelease {
+  verificationResult: IVerificationResult, // TODO use proper typing
+  data: Buffer
+}
+
 
 export interface IMetadata {
   name: string,

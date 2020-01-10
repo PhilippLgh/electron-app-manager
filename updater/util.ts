@@ -1,21 +1,9 @@
 import path from 'path'
-// @ts-ignore
-import {parseString} from 'xml2js'
 import { IRelease, IInvalidRelease } from "./api/IRelease"
-import { pkgsign } from 'ethpkg'
-import { download } from "./lib/downloader"
 import semver from 'semver'
 import { WebContents } from 'electron'
 import { md5 } from './lib/hashes'
 
-export function parseXml(xml : string){
-  return new Promise((resolve, reject) => {
-    parseString(xml, (err : any, result : any) => {
-      if(err) return reject(err)
-      resolve(result)
-    })
-  });
-}
 
 const semverMatcher = /\bv?(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)(?:-[\da-z-]+(?:\.[\da-z-]+)*)?(?:\+[\da-z-]+(?:\.[\da-z-]+)*)?\b/ig;
 // https://github.com/sindresorhus/semver-regex
@@ -167,28 +155,6 @@ export function hasSupportedExtension(fileName : string){
 
 export const isRelease = <IRelease>(value: any): value is IRelease => {
   return value !== null && value !== undefined && !value.error && value.version
-}
-
-export const getEthpkg = async (app : IRelease | Buffer | string) => {
-  let pkg
-  if(Buffer.isBuffer(app)) {
-    return pkgsign.loadPackage(app)
-  } 
-  else if (typeof app === 'string') {
-    if (isUrl(app)) {
-      const appBuf = await download(app)
-      return pkgsign.loadPackage(appBuf)
-    } else {
-      return pkgsign.loadPackage(app)
-    }
-  }
-  else if(isRelease(app)) {
-    // TODO if local
-    return pkgsign.loadPackage(app.location)
-  }
-  else {
-    throw new Error('unsupported package format')
-  }
 }
 
 export const isElectron = () => {
