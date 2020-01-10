@@ -160,12 +160,12 @@ export const createMenu = async (
   onSwitchVersion: Function
 ) => {
 
-  const releases = await appManager.getReleases()
+  const releases : Array<any> = [] // FIXME await appManager.getReleases()
 
   const sub = {
     label: name,
     submenu: [
-      createCheckUpdateMenu(version, appManager.getLatest.bind(appManager)),
+      // FIXME createCheckUpdateMenu(version, appManager.getLatest.bind(appManager)),
       { type: 'separator' },
       {
         label: 'Switch Version',
@@ -231,9 +231,11 @@ class MenuBuilder {
         {
           label: 'Open Cache',
           click: async () => {
+            /*
             if (this.appManager.cacheDir) {
               shell.showItemInFolder(this.appManager.cacheDir) 
             } // TODO else
+            */
           }
         },
         { type: 'separator' },
