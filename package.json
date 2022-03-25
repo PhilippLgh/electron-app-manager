@@ -39,7 +39,7 @@
     "@types/semver": "^5.5.0",
     "chai": "^4.2.0",
     "copyfiles": "^2.1.1",
-    "electron": "^6.0.5",
+    "electron": "^13.6.6",
     "mocha": "^5.2.0",
     "nock": "^10.0.6",
     "ts-node": "^7.0.1",
