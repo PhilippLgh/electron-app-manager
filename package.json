@@ -29,7 +29,7 @@
     "openpgp": "^4.4.5",
     "semver": "^5.6.0",
     "tar-stream": "^1.6.2",
-    "xml2js": "^0.4.19"
+    "xml2js": "^0.5.0"
   },
   "devDependencies": {
     "@types/chai": "^4.1.7",
